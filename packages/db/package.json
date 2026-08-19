@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "echo 'lint: db'",
-    "migrate": "tsx src/migrate.ts",
+    "migrate": "tsx --env-file=../../.env.local src/migrate.ts",
     "clean": "rimraf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
