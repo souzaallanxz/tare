@@ -1,0 +1,33 @@
+{
+  "name": "@tare/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./repositories": "./src/repositories/index.ts",
+    "./client": "./src/client.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "echo 'lint: db'",
+    "migrate": "tsx src/migrate.ts",
+    "clean": "rimraf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@tare/core": "workspace:*",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@tare/config": "workspace:*",
+    "@types/pg": "^8.11.10",
+    "@types/node": "^22.9.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4",
+    "rimraf": "^6.0.1"
+  }
+}

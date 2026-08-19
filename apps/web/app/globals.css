@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+@theme {
+  /* Semantic tokens — the whole visual system. */
+  --color-ink: #101A2B;
+  --color-paper: #F1F3F6;
+  --color-surface: #FFFFFF;
+  --color-rule: #D7DDE5;
+  --color-muted: #5A6675;
+
+  /* Semantic — with meaning. */
+  --color-recovered: #1F6F5C;   /* confirmed savings only, never projections */
+  --color-overrun:   #A63A2A;   /* cost up, budget exceeded */
+  --color-threshold: #C08A2E;   /* approaching a limit */
+  --color-estimated: #7A6CA8;   /* RESERVED — estimated values, nowhere else */
+
+  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+html, body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+/* Small utility set — the design system is thin on purpose. */
+.label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-muted);
+}
+.mut { color: var(--color-muted); }
+.data {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+.display {
+  font-size: 34px;
+  font-weight: 500;
+  line-height: 1.14;
+  letter-spacing: -0.022em;
+  margin: 0;
+}
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-rule);
+  margin-bottom: 24px;
+}
+.panel > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--color-rule);
+  flex-wrap: wrap;
+}
+.panel .title { font-size: 20px; font-weight: 500; }
+.pad { padding: 16px; }
+.sel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-rule);
+  background: var(--color-surface);
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.sel:hover { border-color: var(--color-ink); }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border: 1px solid var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn:hover { background: #1B2A42; }
+.btn.ghost { background: transparent; color: var(--color-ink); }
+.btn.ghost:hover { background: rgba(16,26,43,.06); }
+.btn.s { padding: 5px 11px; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--color-muted);
+  text-align: left;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-rule);
+  white-space: nowrap;
+}
+td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--color-rule);
+  font-size: 14px;
+}
+th.n, td.n { text-align: right; }
+.kpis {
+  display: grid;
+  gap: 1px;
+  background: var(--color-rule);
+  border: 1px solid var(--color-rule);
+  margin-bottom: 24px;
+  grid-template-columns: repeat(4, 1fr);
+}
+.kpi { background: var(--color-surface); padding: 18px; }
+.kpi .v {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  margin: 8px 0 4px;
+  display: inline-block;
+}
+.kpi .v.est { color: var(--color-estimated); border-bottom: 1px dotted var(--color-estimated); padding-bottom: 2px; }
+.kpi .v.rec { color: var(--color-recovered); }
+.kpi .v.ovr { color: var(--color-overrun); }
+.kpi .n { font-size: 12.5px; color: var(--color-muted); display: block; }
+
+/* The signature bar: measured | estimated | limit. */
+.spend-bar {
+  position: relative;
+  height: 16px;
+  background: rgba(16, 26, 43, 0.07);
+  display: flex;
+}
+.spend-bar .measured { background: var(--color-ink); border-radius: 1px; }
+.spend-bar .gap { width: 6px; }
+.spend-bar .estimated {
+  background: var(--color-estimated);
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0) 0 3px,
+    rgba(255, 255, 255, 0.55) 3px 5px
+  );
+  border-radius: 1px;
+}
+.spend-bar .limit {
+  position: absolute; top: -5px; bottom: -5px; width: 2.2px;
+  background: var(--color-ink); border-radius: 1.1px;
+}
