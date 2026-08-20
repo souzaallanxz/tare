@@ -3,6 +3,9 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { getPool, withoutTenant } from "@tare/db";
 import { createTenant } from "@tare/db/repositories";
+import { requireEnv } from "./env";
+
+requireEnv();
 
 /**
  * Better Auth owns identity. Repositories own authorisation.
