@@ -31,10 +31,14 @@ export function resendSender(apiKey: string): EmailSender {
   };
 }
 
-/** In-memory sender for tests and local dev. */
+/** In-memory sender for tests and local dev. Logs a short summary + full HTML. */
 export function fakeSender(sink: EmailMessage[] = []): EmailSender & { sink: EmailMessage[] } {
   const send = async (msg: EmailMessage) => {
     sink.push(msg);
+    // eslint-disable-next-line no-console
+    console.log(
+      `\n[fake mail] → ${msg.to.join(", ")}\n[fake mail] subject: ${msg.subject}\n[fake mail] from: ${msg.from}\n[fake mail] html (${msg.html.length} chars):\n${msg.html}\n`,
+    );
     return { id: `fake-${sink.length}` };
   };
   return Object.assign(send, { sink });

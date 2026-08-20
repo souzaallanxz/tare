@@ -3,6 +3,7 @@ import { withoutTenant, withTenant } from "@tare/db";
 import {
   detectFindings,
   fakeSource,
+  reclassifyUsage,
   recomputeRollups,
   resolveAttribution,
   runIngestion,
@@ -59,6 +60,7 @@ export async function GET(req: Request): Promise<Response> {
 
         const stats = await runIngestion(ctx, source, conn?.id ?? null, { from: start, to: end });
         await resolveAttribution(ctx);
+        await reclassifyUsage(ctx, { from: start, to: end });
         await recomputeRollups(ctx, start, end);
         await detectFindings(ctx, "EUR");
         await sweepVerifications(ctx);

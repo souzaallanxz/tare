@@ -7,3 +7,4 @@ export * from "./workspace-connection.ts";
 export * from "./attribution.ts";
 export * from "./report.ts";
 export * from "./budget.ts";
+export * from "./rate-card.ts";

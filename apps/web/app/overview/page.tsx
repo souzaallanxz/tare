@@ -45,12 +45,9 @@ export default async function OverviewPage() {
           </span>
         </div>
         <div className="kpi">
-          <span className="label">Billed to date</span>
+          <span className="label">Spend to date</span>
           <div className="v"><Money amount={data.billedMinor} basis="billed" currency={data.currency} /></div>
-          <span className="n">
-            {data.billedDays} day{data.billedDays === 1 ? "" : "s"}
-            {data.source === "real" ? " · priced at list until rate card lands" : ""}
-          </span>
+          <span className="n">{data.billedDays} day{data.billedDays === 1 ? "" : "s"} · settings sets the rate card</span>
         </div>
         <div className="kpi">
           <span className="label">Forecast, month end</span>

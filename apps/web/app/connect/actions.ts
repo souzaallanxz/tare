@@ -14,6 +14,7 @@ import {
   databricksSource,
   detectFindings,
   fakeSource,
+  reclassifyUsage,
   runIngestion,
   classify,
   recomputeRollups,
@@ -145,6 +146,7 @@ export async function startIngestionAction(
     try {
       const stats = await runIngestion(ctx, source, conn?.id ?? null, { from: start, to: end });
       await resolveAttribution(ctx);
+      await reclassifyUsage(ctx, { from: start, to: end });
       await recomputeRollups(ctx, start, end);
       const findings = await detectFindings(ctx, "EUR");
       const verify = await sweepVerifications(ctx);
