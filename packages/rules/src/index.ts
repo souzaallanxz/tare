@@ -10,6 +10,7 @@ export * from "./rule.ts";
 export * from "./stats.ts";
 export * from "./forecast.ts";
 export * from "./anomaly.ts";
+export * from "./attribution.ts";
 
 export const ALL_RULES: readonly Rule[] = [
   unattributed,

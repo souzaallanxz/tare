@@ -19,7 +19,8 @@
   "dependencies": {
     "@tare/core": "workspace:*",
     "@tare/db": "workspace:*",
-    "@tare/crypto": "workspace:*"
+    "@tare/crypto": "workspace:*",
+    "@tare/rules": "workspace:*"
   },
   "devDependencies": {
     "@tare/config": "workspace:*",

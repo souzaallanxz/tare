@@ -16,6 +16,7 @@ import {
   runIngestion,
   classify,
   recomputeRollups,
+  resolveAttribution,
 } from "@tare/ingest";
 import { addDays, toIsoDate } from "@tare/core";
 import { requireSession } from "../../lib/session";
@@ -141,6 +142,7 @@ export async function startIngestionAction(
 
     try {
       const stats = await runIngestion(ctx, source, conn?.id ?? null, { from: start, to: end });
+      await resolveAttribution(ctx);
       await recomputeRollups(ctx, start, end);
       return { ok: true as const, message: `Ingested ${stats.rowsUpserted} rows.`, rows: stats.rowsUpserted };
     } catch (err) {

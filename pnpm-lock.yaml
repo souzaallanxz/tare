@@ -199,6 +199,9 @@ importers:
       '@tare/db':
         specifier: workspace:*
         version: link:../db
+      '@tare/rules':
+        specifier: workspace:*
+        version: link:../rules
     devDependencies:
       '@tare/config':
         specifier: workspace:*
