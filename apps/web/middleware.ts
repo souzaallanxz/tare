@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *
  * Not a security boundary. Every protected page still calls requireSession().
  */
-const APP_PREFIXES = ["/overview", "/ledger", "/owners", "/savings", "/report", "/connect", "/settings", "/workload"];
+const APP_PREFIXES = ["/overview", "/ledger", "/owners", "/savings", "/report", "/connect", "/settings", "/workload", "/import"];
 
 const SESSION_COOKIE_RE = /^tare\.session/;
 
@@ -36,5 +36,6 @@ export const config = {
     "/connect/:path*",
     "/settings/:path*",
     "/workload/:path*",
+    "/import/:path*",
   ],
 };

@@ -19,8 +19,17 @@ import { requireSession } from "../../lib/session";
 export default async function OverviewPage() {
   const session = await requireSession();
 
-  const conn = await withTenant(session.activeTenant.id, (ctx) => getConnection(ctx));
-  if (!conn) redirect("/connect");
+  // First-run: send a fresh tenant to Connection. Skip once any ingestion has
+  // succeeded, so the CSV assessment path lands on Overview naturally.
+  const { conn, hasRun } = await withTenant(session.activeTenant.id, async (ctx) => {
+    const c = await getConnection(ctx);
+    const r = await ctx.query<{ n: number }>(
+      `SELECT COUNT(*)::int AS n FROM ingest_run WHERE tenant_id = $1 AND status = 'succeeded'`,
+      [ctx.tenantId],
+    );
+    return { conn: c, hasRun: (r.rows[0]?.n ?? 0) > 0 };
+  });
+  if (!conn && !hasRun) redirect("/connect");
 
   const data = await getOverviewData(session.activeTenant.id);
   const pctOfBudget = ((data.forecastMinor / data.budgetMinor) * 100).toFixed(1);

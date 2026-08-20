@@ -5,6 +5,7 @@ export * from "./attribution-step.ts";
 export * from "./rules-step.ts";
 export * from "./verify-step.ts";
 export * from "./reclassify-step.ts";
+export * from "./csv-analyze.ts";
 export { databricksSource, type DatabricksConfig } from "./sources/databricks.ts";
 export { csvSource, type CsvSourceConfig } from "./sources/csv.ts";
 export { fakeSource } from "./sources/fake.ts";

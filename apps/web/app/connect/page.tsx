@@ -99,6 +99,20 @@ export default async function ConnectPage() {
         </Table>
       </Card>
 
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Or start from a CSV export</CardTitle>
+          <CardHint>Assessment path — no live workspace needed</CardHint>
+        </CardHeader>
+        <CardBody>
+          <p className="text-muted max-w-[72ch] mb-3">
+            Export <span className="font-mono">system.billing.usage</span> once, walk it through the whole
+            product, decide whether a live connection is worth the security review.
+          </p>
+          <a href="/import" className="underline">Open the import screen →</a>
+        </CardBody>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>4 · Development shortcut</CardTitle>
