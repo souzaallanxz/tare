@@ -1,7 +1,9 @@
+import { withTenant } from "@tare/db";
+import { getConnection, type ConnectionStatus } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
-import { Money } from "../../components/money";
 import { Pill } from "../../components/pills";
 import { requireSession } from "../../lib/session";
+import { ConnectForm } from "./connect-form";
 
 const GRANTS = `GRANT USE CATALOG ON CATALOG system          TO \`tare-service-principal\`;
 GRANT SELECT ON SCHEMA      system.billing   TO \`tare-service-principal\`;
@@ -11,6 +13,8 @@ GRANT SELECT ON SCHEMA      system.query     TO \`tare-service-principal\`;`;
 
 export default async function ConnectPage() {
   const session = await requireSession();
+  const conn = await withTenant(session.activeTenant.id, (ctx) => getConnection(ctx));
+
   return (
     <AppShell active="connect" session={session}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
@@ -20,29 +24,28 @@ export default async function ConnectPage() {
             Four steps. Read-only throughout, and revocable in one statement.
           </p>
         </div>
-        <Pill variant="ovr" dot>not connected</Pill>
+        <StatusPill status={conn?.status ?? null} message={conn?.statusMessage ?? null} />
       </div>
 
       <section className="panel">
-        <header><span className="title">1 · Create a service principal</span><span className="label">In your account console</span></header>
+        <header>
+          <span className="title">1 · Save the service principal</span>
+          <span className="label">Secret is envelope-encrypted before it hits the database</span>
+        </header>
         <div className="pad">
           <p className="mut" style={{ margin: "0 0 14px", maxWidth: "72ch" }}>
             Create an OAuth machine-to-machine service principal named{" "}
-            <span className="data">tare-service-principal</span>, generate a secret, and paste the client ID
-            here. Tare never receives a personal access token and never acts as a user.
+            <span className="data">tare-service-principal</span>, generate a secret, and paste it here.
+            The secret is sealed with a per-connection data key and only opened in memory during a run.
           </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, maxWidth: 640 }}>
-            <div>
-              <label className="label" htmlFor="host">Workspace host</label>
-              <input id="host" defaultValue="adb-0000000000000000.0.azuredatabricks.net"
-                style={{ width: "100%", padding: "10px 12px", border: "1px solid var(--color-rule)", fontFamily: "var(--font-mono)", fontSize: 13, background: "var(--color-surface)" }} />
-            </div>
-            <div>
-              <label className="label" htmlFor="cid">Client ID</label>
-              <input id="cid" placeholder="00000000-0000-0000-0000-000000000000"
-                style={{ width: "100%", padding: "10px 12px", border: "1px solid var(--color-rule)", fontFamily: "var(--font-mono)", fontSize: 13, background: "var(--color-surface)" }} />
-            </div>
-          </div>
+          <ConnectForm
+            initial={{
+              host: conn?.host ?? "",
+              clientId: conn?.clientId ?? "",
+              warehouseId: conn?.warehouseId ?? null,
+              hasSecret: Boolean(conn),
+            }}
+          />
         </div>
       </section>
 
@@ -67,53 +70,44 @@ export default async function ConnectPage() {
           >
             {GRANTS}
           </pre>
+          <p className="mut" style={{ fontSize: 13, marginTop: 14 }}>
+            Optional, for savings verification:{" "}
+            <span className="data">SELECT ON SCHEMA system.access</span>.
+          </p>
         </div>
       </section>
 
       <section className="panel">
-        <header>
-          <span className="title">3 · Pick a SQL warehouse</span>
-          <span className="label">Queries run on your compute, billed to you</span>
-        </header>
-        <table>
-          <thead>
-            <tr>
-              <th></th><th>Warehouse</th><th>Size</th><th>State</th>
-              <th className="n">Typical daily cost of Tare</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style={{ width: 36 }}>○</td>
-              <td className="data">bi-warehouse</td>
-              <td className="data">Small</td>
-              <td className="mut" style={{ fontSize: 13 }}>Running</td>
-              <td className="n"><Money amount={40} basis="estimated" /></td>
-            </tr>
-            <tr>
-              <td>○</td>
-              <td className="data">ops-serverless</td>
-              <td className="data">2X-Small</td>
-              <td className="mut" style={{ fontSize: 13 }}>Stopped</td>
-              <td className="n"><Money amount={25} basis="estimated" /></td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section className="panel">
-        <header><span className="title">4 · Test and start</span></header>
-        <div className="pad" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-          <p className="mut" style={{ margin: 0, maxWidth: "60ch" }}>
-            The first pull reads 90 days of history and takes around ten minutes. After that, one incremental
-            pull a day with a three-day re-read window, because usage records settle late.
+        <header><span className="title">3 · Development shortcut</span><span className="label">No workspace yet</span></header>
+        <div className="pad">
+          <p className="mut" style={{ margin: 0, maxWidth: "72ch" }}>
+            Set <span className="data">USE_FAKE_INGEST=1</span> in the environment. &ldquo;Start ingestion&rdquo;
+            will populate the DB with deterministic synthetic data so the rest of the product is exercisable
+            end-to-end. Numbers are not calibrated to anything real — do not read them as findings.
           </p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn ghost">Test the connection</button>
-            <button className="btn">Start the first ingestion</button>
-          </div>
         </div>
       </section>
     </AppShell>
+  );
+}
+
+const LABEL: Record<ConnectionStatus, { text: string; variant: "muted" | "rec" | "thr" | "ovr" }> = {
+  pending:      { text: "pending",         variant: "muted" },
+  ok:           { text: "connected",       variant: "rec" },
+  auth_failed:  { text: "auth failed",     variant: "ovr" },
+  permission:   { text: "grant missing",   variant: "ovr" },
+  schema_drift: { text: "schema drift",    variant: "ovr" },
+  quota:        { text: "quota",           variant: "thr" },
+  error:        { text: "error",           variant: "ovr" },
+};
+
+function StatusPill({ status, message }: { status: ConnectionStatus | null; message: string | null }) {
+  if (!status) return <Pill variant="ovr" dot>not connected</Pill>;
+  const cfg = LABEL[status];
+  return (
+    <span style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <Pill variant={cfg.variant} dot>{cfg.text}</Pill>
+      {message ? <span className="mut" style={{ fontSize: 12, fontFamily: "var(--font-mono)" }}>{message}</span> : null}
+    </span>
   );
 }

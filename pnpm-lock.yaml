@@ -29,12 +29,18 @@ importers:
       '@tare/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@tare/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       '@tare/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@tare/email':
         specifier: workspace:*
         version: link:../../packages/email
+      '@tare/ingest':
+        specifier: workspace:*
+        version: link:../../packages/ingest
       '@tare/rules':
         specifier: workspace:*
         version: link:../../packages/rules
@@ -47,6 +53,9 @@ importers:
       nuqs:
         specifier: ^2.2.3
         version: 2.9.6(next@15.5.23(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+      pg:
+        specifier: ^8.13.1
+        version: 8.23.0
       react:
         specifier: ^19.0.0
         version: 19.2.8

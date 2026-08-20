@@ -19,7 +19,7 @@ export class IngestError extends Error {
     super(message, opts.cause ? { cause: opts.cause } : undefined);
     this.name = "IngestError";
     this.class = cls;
-    this.retriable = opts.retriable ?? cls === "transient" || cls === "quota";
+    this.retriable = opts.retriable ?? (cls === "transient" || cls === "quota");
     this.hint = opts.hint ?? null;
   }
 }

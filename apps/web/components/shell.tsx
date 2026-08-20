@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { withTenant } from "@tare/db";
 import { Lockup } from "./logo";
 import { Pill } from "./pills";
 import { SignOut } from "./sign-out";
@@ -21,8 +22,9 @@ type Props = {
   children: React.ReactNode;
 };
 
-export function AppShell({ active, session, children }: Props) {
+export async function AppShell({ active, session, children }: Props) {
   const { user, activeTenant } = session;
+  const freshness = await getFreshness(activeTenant.id);
   return (
     <div style={{ display: "grid", gridTemplateColumns: "222px 1fr", minHeight: "100vh" }}>
       <aside
@@ -93,26 +95,47 @@ export function AppShell({ active, session, children }: Props) {
             <Pill variant="ink">billed</Pill>
             <Pill variant="est">estimated</Pill>
             <span style={{ color: "var(--color-muted)", fontSize: 13 }}>
-              Ingested {FIXTURE.ingestedAt}
+              {freshness}
             </span>
           </div>
         </div>
-        <div
-          style={{
-            padding: "7px 26px",
-            borderBottom: "1px solid var(--color-rule)",
-            background: "rgba(122,108,168,.09)",
-            color: "var(--color-estimated)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            textTransform: "uppercase",
-            letterSpacing: ".12em",
-          }}
-        >
-          Phase 0 · fixture data · no workspace is connected
-        </div>
+        {freshness.startsWith("Fixture") ? (
+          <div
+            style={{
+              padding: "7px 26px",
+              borderBottom: "1px solid var(--color-rule)",
+              background: "rgba(122,108,168,.09)",
+              color: "var(--color-estimated)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              textTransform: "uppercase",
+              letterSpacing: ".12em",
+            }}
+          >
+            Fixture data · no workspace has ingested yet
+          </div>
+        ) : null}
         <div style={{ padding: 26 }}>{children}</div>
       </main>
     </div>
   );
 }
+
+async function getFreshness(tenantId: string): Promise<string> {
+  return withTenant(tenantId, async (ctx) => {
+    const res = await ctx.query<{ finished_at: Date | null; status: string }>(
+      `SELECT finished_at, status::text AS status
+       FROM ingest_run
+       WHERE tenant_id = $1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [ctx.tenantId],
+    );
+    const row = res.rows[0];
+    if (!row) return `Fixture data · ingested ${FIXTURE.ingestedAt}`;
+    if (row.status !== "succeeded") return `Ingestion ${row.status}`;
+    const at = row.finished_at ?? new Date();
+    return `Ingested ${at.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+  });
+}
+

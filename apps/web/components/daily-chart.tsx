@@ -1,19 +1,22 @@
-import { FIXTURE } from "../lib/fixtures";
+type Props = {
+  dailyMinor: readonly number[];
+  billedDays: number;
+  height?: number;
+};
 
-/** Solid bars up to the billed cut, 135° hatch after — same treatment as the spend bar. */
-export function DailyChart({ height = 148 }: { height?: number }) {
+/** Solid bars up to billedDays, 135° hatched after — matches the spend bar. */
+export function DailyChart({ dailyMinor, billedDays, height = 148 }: Props) {
   const w = 680;
   const pad = 16;
-  const days = FIXTURE.dailyMinor;
-  const max = Math.max(...days);
-  const bw = (w - pad * 2) / days.length;
+  const max = Math.max(...dailyMinor, 1);
+  const bw = (w - pad * 2) / dailyMinor.length;
 
   return (
     <svg
       viewBox={`0 0 ${w} ${height}`}
       width="100%"
       role="img"
-      aria-label="Daily spend, August 2026, forecast after the 23rd"
+      aria-label="Daily spend; forecast bars are hatched"
     >
       <defs>
         <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(135)">
@@ -22,11 +25,11 @@ export function DailyChart({ height = 148 }: { height?: number }) {
         </pattern>
       </defs>
       <line x1={pad} y1={height - 26} x2={w - pad} y2={height - 26} stroke="#D7DDE5" />
-      {days.map((v, i) => {
+      {dailyMinor.map((v, i) => {
         const bh = Math.max(2, (v / max) * (height - 44));
         const x = pad + i * bw;
         const y = height - 26 - bh;
-        const billed = i < FIXTURE.billedDays;
+        const billed = i < billedDays;
         return (
           <g key={i}>
             <rect
@@ -40,11 +43,11 @@ export function DailyChart({ height = 148 }: { height?: number }) {
               strokeWidth={billed ? undefined : 0.5}
             >
               <title>
-                {i + 1} Aug · €{(v / 100).toLocaleString("en-IE", { minimumFractionDigits: 2 })} ·{" "}
+                {i + 1} · €{(v / 100).toLocaleString("en-IE", { minimumFractionDigits: 2 })} ·{" "}
                 {billed ? "billed" : "estimated"}
               </title>
             </rect>
-            {(i % 7 === 0 || i === days.length - 1) && (
+            {(i % 7 === 0 || i === dailyMinor.length - 1) && (
               <text
                 x={x + bw / 2}
                 y={height - 9}

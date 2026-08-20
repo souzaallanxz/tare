@@ -51,7 +51,9 @@ export default async function WorkloadPage({ params }: { params: Promise<{ name:
         <div>
           <section className="panel">
             <header><span className="title">Daily cost</span><span className="label">31 days</span></header>
-            <div className="pad"><DailyChart height={140} /></div>
+            <div className="pad">
+              <DailyChart dailyMinor={FIXTURE.dailyMinor} billedDays={FIXTURE.billedDays} height={140} />
+            </div>
           </section>
           <section className="panel">
             <header><span className="title">Recent runs</span><span className="label">Last five</span></header>
