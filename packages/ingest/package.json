@@ -20,7 +20,8 @@
     "@tare/core": "workspace:*",
     "@tare/db": "workspace:*",
     "@tare/crypto": "workspace:*",
-    "@tare/rules": "workspace:*"
+    "@tare/rules": "workspace:*",
+    "@tare/verify": "workspace:*"
   },
   "devDependencies": {
     "@tare/config": "workspace:*",

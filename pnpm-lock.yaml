@@ -202,6 +202,9 @@ importers:
       '@tare/rules':
         specifier: workspace:*
         version: link:../rules
+      '@tare/verify':
+        specifier: workspace:*
+        version: link:../verify
     devDependencies:
       '@tare/config':
         specifier: workspace:*

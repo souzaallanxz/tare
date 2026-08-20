@@ -12,11 +12,13 @@ import {
 import { deserialize, envKekProvider, open, seal, serialize } from "@tare/crypto";
 import {
   databricksSource,
+  detectFindings,
   fakeSource,
   runIngestion,
   classify,
   recomputeRollups,
   resolveAttribution,
+  sweepVerifications,
 } from "@tare/ingest";
 import { addDays, toIsoDate } from "@tare/core";
 import { requireSession } from "../../lib/session";
@@ -144,7 +146,17 @@ export async function startIngestionAction(
       const stats = await runIngestion(ctx, source, conn?.id ?? null, { from: start, to: end });
       await resolveAttribution(ctx);
       await recomputeRollups(ctx, start, end);
-      return { ok: true as const, message: `Ingested ${stats.rowsUpserted} rows.`, rows: stats.rowsUpserted };
+      const findings = await detectFindings(ctx, "EUR");
+      const verify = await sweepVerifications(ctx);
+      return {
+        ok: true as const,
+        message:
+          `Ingested ${stats.rowsUpserted} rows. ` +
+          `Found ${findings.findings} finding${findings.findings === 1 ? "" : "s"} across ${findings.ran.length} rules` +
+          (findings.skipped.length ? ` (${findings.skipped.length} skipped for missing capabilities)` : "") +
+          `. Verification: ${verify.confirmed} confirmed, ${verify.notObserved} not observed.`,
+        rows: stats.rowsUpserted,
+      };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return { ok: false as const, message: msg };
