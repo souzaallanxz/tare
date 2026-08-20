@@ -1,0 +1,21 @@
+@media print {
+  html, body {
+    background: #FFFFFF !important;
+    color: #101A2B !important;
+    font-size: 11pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    size: A4;
+    margin: 18mm 15mm;
+  }
+
+  a { color: inherit !important; text-decoration: none !important; }
+  section { break-inside: avoid; }
+  table { break-inside: auto; }
+  tr    { break-inside: avoid; break-after: auto; }
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+}

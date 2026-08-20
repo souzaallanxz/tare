@@ -76,6 +76,11 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
       <PageHeader
         title="Ledger"
         description={`${total.toLocaleString("en-IE")} rows in the last ${days} days.`}
+        actions={
+          <Button asChild variant="ghost" size="sm">
+            <Link href={exportUrl(sp) as never}>Export CSV</Link>
+          </Button>
+        }
       />
 
       <Card>
@@ -97,6 +102,15 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
 
 function str(v: string | string[] | undefined): string {
   return typeof v === "string" ? v : "";
+}
+
+function exportUrl(search: Search): string {
+  const qp = new URLSearchParams();
+  for (const [k, v] of Object.entries(search)) {
+    if (typeof v === "string" && k !== "page") qp.set(k, v);
+  }
+  const qs = qp.toString();
+  return qs ? `/api/ledger/export?${qs}` : "/api/ledger/export";
 }
 
 function rowsForClient(rows: readonly LedgerRowServer[]): LedgerRow[] {

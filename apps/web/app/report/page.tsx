@@ -6,6 +6,8 @@ import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../component
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { requireSession } from "../../lib/session";
 import { renderWeeklyReportFor } from "../../lib/weekly-report";
+import Link from "next/link";
+import { Button } from "../../components/ui/button";
 import { AddRecipientForm, RemoveRecipientButton, SendButtons } from "./controls";
 
 export default async function ReportPage() {
@@ -20,7 +22,14 @@ export default async function ReportPage() {
       <PageHeader
         title="Weekly report"
         description="640 px, table layout, no web fonts. Survives Outlook."
-        actions={<SendButtons />}
+        actions={
+          <span className="flex gap-2 items-center">
+            <Button asChild variant="ghost" size="sm">
+              <Link href={{ pathname: "/report/monthly" } as never}>Monthly PDF</Link>
+            </Button>
+            <SendButtons />
+          </span>
+        }
       />
 
       <Card className="mb-6">
