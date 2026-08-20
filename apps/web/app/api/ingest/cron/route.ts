@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withoutTenant, withTenant } from "@tare/db";
 import {
+  detectAnomaliesForTenant,
   detectFindings,
   fakeSource,
   reclassifyUsage,
@@ -63,6 +64,7 @@ export async function GET(req: Request): Promise<Response> {
         await reclassifyUsage(ctx, { from: start, to: end });
         await recomputeRollups(ctx, start, end);
         await detectFindings(ctx, "EUR");
+        await detectAnomaliesForTenant(ctx);
         await sweepVerifications(ctx);
         return { rows: stats.rowsUpserted };
       });

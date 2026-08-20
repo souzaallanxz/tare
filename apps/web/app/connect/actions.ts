@@ -12,6 +12,7 @@ import {
 import { deserialize, envKekProvider, open, seal, serialize } from "@tare/crypto";
 import {
   databricksSource,
+  detectAnomaliesForTenant,
   detectFindings,
   fakeSource,
   reclassifyUsage,
@@ -149,6 +150,7 @@ export async function startIngestionAction(
       await reclassifyUsage(ctx, { from: start, to: end });
       await recomputeRollups(ctx, start, end);
       const findings = await detectFindings(ctx, "EUR");
+      const anomalies = await detectAnomaliesForTenant(ctx);
       const verify = await sweepVerifications(ctx);
       return {
         ok: true as const,
@@ -156,7 +158,8 @@ export async function startIngestionAction(
           `Ingested ${stats.rowsUpserted} rows. ` +
           `Found ${findings.findings} finding${findings.findings === 1 ? "" : "s"} across ${findings.ran.length} rules` +
           (findings.skipped.length ? ` (${findings.skipped.length} skipped for missing capabilities)` : "") +
-          `. Verification: ${verify.confirmed} confirmed, ${verify.notObserved} not observed.`,
+          `. Anomalies: ${anomalies.written} across ${anomalies.scanned} entities.` +
+          ` Verification: ${verify.confirmed} confirmed, ${verify.notObserved} not observed.`,
         rows: stats.rowsUpserted,
       };
     } catch (err) {

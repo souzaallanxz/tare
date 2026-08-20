@@ -5,6 +5,7 @@ import { withTenant } from "@tare/db";
 import {
   analyzeCsv,
   csvSource,
+  detectAnomaliesForTenant,
   detectFindings,
   reclassifyUsage,
   recomputeRollups,
@@ -64,6 +65,7 @@ export async function importCsvAction(
       await reclassifyUsage(ctx, { from, to });
       await recomputeRollups(ctx, from, to);
       const findings = await detectFindings(ctx, session.activeTenant.currency as "EUR" | "USD");
+      await detectAnomaliesForTenant(ctx);
       return { rows: stats.rowsUpserted, findings: findings.findings };
     });
 

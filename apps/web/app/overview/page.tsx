@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { withTenant } from "@tare/db";
-import { getConnection } from "@tare/db/repositories";
+import { getConnection, listRecentAnomalies } from "@tare/db/repositories";
+import { AnomalyList } from "../../components/anomaly-list";
 import { AppShell } from "../../components/shell";
 import { DailyChart } from "../../components/daily-chart";
 import { Money } from "../../components/money";
@@ -31,7 +32,10 @@ export default async function OverviewPage() {
   });
   if (!conn && !hasRun) redirect("/connect");
 
-  const data = await getOverviewData(session.activeTenant.id);
+  const [data, anomalies] = await Promise.all([
+    getOverviewData(session.activeTenant.id),
+    withTenant(session.activeTenant.id, (ctx) => listRecentAnomalies(ctx, { days: 30, limit: 8 })),
+  ]);
   const pctOfBudget = ((data.forecastMinor / data.budgetMinor) * 100).toFixed(1);
 
   return (
@@ -153,6 +157,14 @@ export default async function OverviewPage() {
           </Card>
         </div>
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Recent anomalies</CardTitle>
+          <CardHint>Median + 3·MAD over 28 days · both directions</CardHint>
+        </CardHeader>
+        <AnomalyList rows={anomalies} />
+      </Card>
     </AppShell>
   );
 }

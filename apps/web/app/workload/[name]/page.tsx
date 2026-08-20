@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { withTenant } from "@tare/db";
-import { listOwners } from "@tare/db/repositories";
+import { anomaliesForEntity, listOwners } from "@tare/db/repositories";
+import { AnomalyList } from "../../../components/anomaly-list";
 import { AppShell } from "../../../components/shell";
 import { DailyChart } from "../../../components/daily-chart";
 import { Money } from "../../../components/money";
@@ -25,6 +26,9 @@ export default async function WorkloadPage({ params }: { params: Promise<{ name:
     withTenant(session.activeTenant.id, (ctx) => listOwners(ctx)),
   ]);
   if (!data) notFound();
+  const anomalies = await withTenant(session.activeTenant.id, (ctx) =>
+    anomaliesForEntity(ctx, data.entity.id, { days: 60 }),
+  );
 
   const { entity, config, daily, totalMinor, currency, findings, workspaceTotalMinor } = data;
   const share = workspaceTotalMinor > 0 ? (totalMinor / workspaceTotalMinor) * 100 : 0;
@@ -137,6 +141,14 @@ export default async function WorkloadPage({ params }: { params: Promise<{ name:
                 </TBody>
               </Table>
             )}
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Anomalies</CardTitle>
+              <CardHint>Rolling 60-day window</CardHint>
+            </CardHeader>
+            <AnomalyList rows={anomalies} showEntity={false} />
           </Card>
         </div>
 
