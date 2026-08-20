@@ -1,18 +1,27 @@
 import { withTenant } from "@tare/db";
-import { listInvitations, listMembers } from "@tare/db/repositories";
+import {
+  listBudgets,
+  listInvitations,
+  listMembers,
+  listOwners,
+} from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
+import { Money } from "../../components/money";
 import { Pill } from "../../components/pills";
 import { requireSession } from "../../lib/session";
 import { InviteForm } from "./invite-form";
 import { RemoveInviteButton, RemoveMemberButton } from "./row-actions";
+import { AddBudgetForm, DeleteBudgetButton } from "./budget-controls";
 
 const REVOKE = `REVOKE USE CATALOG ON CATALOG system FROM \`tare-service-principal\`;`;
 
 export default async function SettingsPage() {
   const session = await requireSession();
-  const { members, invitations } = await withTenant(session.activeTenant.id, async (ctx) => ({
+  const { members, invitations, budgets, owners } = await withTenant(session.activeTenant.id, async (ctx) => ({
     members: await listMembers(ctx),
     invitations: await listInvitations(ctx),
+    budgets: await listBudgets(ctx),
+    owners: await listOwners(ctx),
   }));
 
   return (
@@ -39,6 +48,36 @@ export default async function SettingsPage() {
             <button className="btn ghost s">Connect Azure Cost Management</button>
           </div>
         </div>
+      </section>
+
+      <section className="panel">
+        <header>
+          <span className="title">Budgets and thresholds</span>
+          <span className="label">Currency: {session.activeTenant.currency}</span>
+        </header>
+        <div className="pad" style={{ borderBottom: "1px solid var(--color-rule)" }}>
+          <AddBudgetForm owners={owners.map((o) => ({ id: o.id, name: o.name }))} />
+        </div>
+        {budgets.length === 0 ? (
+          <div className="pad mut">No budgets yet. Overview will fall back to a computed ruler.</div>
+        ) : (
+          <table>
+            <thead>
+              <tr><th>Scope</th><th>Period</th><th className="n">Limit</th><th className="n">Warn at</th><th className="n"></th></tr>
+            </thead>
+            <tbody>
+              {budgets.map((b) => (
+                <tr key={b.id}>
+                  <td>{b.scopeLabel}</td>
+                  <td className="data mut">{b.period}</td>
+                  <td className="n"><Money amount={b.limitMinor} basis="billed" currency={b.currency as "EUR" | "USD"} /></td>
+                  <td className="n data">{b.thresholdPct}%</td>
+                  <td className="n"><DeleteBudgetButton id={b.id} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </section>
 
       <section className="panel">

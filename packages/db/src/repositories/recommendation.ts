@@ -120,7 +120,7 @@ export async function createRecommendation(
   const res = await ctx.query<{ id: string }>(
     `INSERT INTO recommendation
       (tenant_id, rule, entity_id, impact_minor, impact_basis, currency, explanation)
-     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+     VALUES ($1, $2, $3, $4, $5::basis, $6, $7) RETURNING id`,
     [
       ctx.tenantId,
       input.rule,
@@ -153,8 +153,8 @@ export async function transitionRecommendation(
 
   await ctx.query(
     `UPDATE recommendation
-     SET state = $3,
-         applied_at = CASE WHEN $3 = 'applied' THEN now() ELSE applied_at END
+     SET state = $3::recommendation_state,
+         applied_at = CASE WHEN $3::recommendation_state = 'applied' THEN now() ELSE applied_at END
      WHERE tenant_id=$1 AND id=$2`,
     [ctx.tenantId, id, to],
   );
@@ -171,7 +171,7 @@ async function recordEvent(
 ): Promise<void> {
   await ctx.query(
     `INSERT INTO recommendation_event (recommendation_id, from_state, to_state, actor, note)
-     VALUES ($1,$2,$3,$4,$5)`,
+     VALUES ($1, $2::recommendation_state, $3::recommendation_state, $4, $5)`,
     [recommendationId, from, to, actor, note],
   );
 }

@@ -75,7 +75,7 @@ async function upsertRecommendation(
   // If none exists (or all are terminal), insert a fresh one.
   const upd = await ctx.query<{ id: string }>(
     `UPDATE recommendation
-     SET impact_minor = $3, impact_basis = $4, explanation = $5
+     SET impact_minor = $3, impact_basis = $4::basis, explanation = $5
      WHERE tenant_id = $1
        AND rule = $2
        AND (entity_id = $6 OR (entity_id IS NULL AND $6 IS NULL))
@@ -88,7 +88,7 @@ async function upsertRecommendation(
   await ctx.query(
     `INSERT INTO recommendation
        (tenant_id, rule, entity_id, impact_minor, impact_basis, currency, explanation)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+     VALUES ($1, $2, $3, $4, $5::basis, $6, $7)`,
     [ctx.tenantId, f.rule, entityId, f.impactMinor, f.impactBasis, currency, f.explanation],
   );
 }

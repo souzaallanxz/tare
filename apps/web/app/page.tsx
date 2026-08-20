@@ -18,8 +18,8 @@ export default function MarketingPage() {
       >
         <Link href="/"><Lockup /></Link>
         <div style={{ display: "flex", gap: 24, alignItems: "center", fontSize: 14 }}>
-          <Link href="/#access" className="mut">How it works</Link>
-          <Link href="/#pricing" className="mut">Pricing</Link>
+          <Link href="/security" className="mut">Security</Link>
+          <Link href="/sample" className="mut">Sample report</Link>
           <Link className="btn s" href="/login">Log in</Link>
         </div>
       </div>

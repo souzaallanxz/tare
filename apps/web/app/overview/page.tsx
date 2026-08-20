@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { withTenant } from "@tare/db";
+import { getConnection } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
 import { DailyChart } from "../../components/daily-chart";
 import { Money } from "../../components/money";
@@ -10,6 +13,12 @@ import { requireSession } from "../../lib/session";
 
 export default async function OverviewPage() {
   const session = await requireSession();
+
+  // First-run: send a fresh tenant to the Connection screen so they set up
+  // ingestion before staring at fixture numbers.
+  const conn = await withTenant(session.activeTenant.id, (ctx) => getConnection(ctx));
+  if (!conn) redirect("/connect");
+
   const data = await getOverviewData(session.activeTenant.id);
   const pctOfBudget = ((data.forecastMinor / data.budgetMinor) * 100).toFixed(1);
 

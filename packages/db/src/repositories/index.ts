@@ -5,3 +5,5 @@ export * from "./recommendation.ts";
 export * from "./membership.ts";
 export * from "./workspace-connection.ts";
 export * from "./attribution.ts";
+export * from "./report.ts";
+export * from "./budget.ts";

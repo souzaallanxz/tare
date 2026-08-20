@@ -1,41 +1,16 @@
+import { withTenant } from "@tare/db";
+import { listReportRecipients } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
-import { renderWeeklyReport } from "@tare/email";
-import { FIXTURE } from "../../lib/fixtures";
 import { requireSession } from "../../lib/session";
+import { renderWeeklyReportFor } from "../../lib/weekly-report";
+import { AddRecipientForm, RemoveRecipientButton, SendButtons } from "./controls";
 
 export default async function ReportPage() {
   const session = await requireSession();
-  const html = renderWeeklyReport({
-    tenantName: "Acme Data",
-    workspace: FIXTURE.workspace,
-    weekLabel: "Mon 24 Aug",
-    currency: "EUR",
-    ingestedAt: FIXTURE.ingestedAt,
-    confirmedLifetimeMinor: FIXTURE.lifetimeConfirmedMinor,
-    items: [
-      {
-        headline: "A warehouse with no owner has run hot for nine days.",
-        detail: "ad-hoc-sql · 3.1× its 28-day baseline · billed",
-        amountMinor: 4_120_00,
-        basis: "billed",
-        tone: "up",
-      },
-      {
-        headline: "July's compute-type fix is holding.",
-        detail: "nightly-ingest · confirmed against the invoice",
-        amountMinor: 1_240_00,
-        basis: "billed",
-        tone: "down",
-      },
-      {
-        headline: "You will reach 94.5% of budget by the 31st.",
-        detail: "Estimated from the current run rate",
-        amountMinor: FIXTURE.forecastMinor,
-        basis: "estimated",
-        tone: "neutral",
-      },
-    ],
-  });
+  const [{ html }, recipients] = await Promise.all([
+    renderWeeklyReportFor(session.activeTenant.id, session.activeTenant.name),
+    withTenant(session.activeTenant.id, (ctx) => listReportRecipients(ctx, "weekly")),
+  ]);
 
   return (
     <AppShell active="report" session={session}>
@@ -43,24 +18,50 @@ export default async function ReportPage() {
         <div>
           <h1 className="display">Weekly report</h1>
           <p className="mut" style={{ margin: "6px 0 0" }}>
-            640 px, table layout, no web fonts. It has to survive Outlook.
+            640 px, table layout, no web fonts. Survives Outlook.
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="sel">Recipients: 3 ⌄</button>
-          <button className="btn ghost s">Send a test to me</button>
-        </div>
+        <SendButtons />
       </div>
 
       <section className="panel">
         <header>
-          <span className="title">Monday 24 August, 07:00 CET</span>
-          <span className="label">Estimated marker carries the word as well as the colour</span>
+          <span className="title">Recipients</span>
+          <span className="label">Emailed every Monday 07:00 CET</span>
+        </header>
+        <div className="pad" style={{ borderBottom: "1px solid var(--color-rule)" }}>
+          <AddRecipientForm />
+        </div>
+        {recipients.length === 0 ? (
+          <div className="pad mut">
+            No recipients yet. Test sends still go to your own address.
+          </div>
+        ) : (
+          <table>
+            <thead>
+              <tr><th>Email</th><th>Name</th><th className="n"></th></tr>
+            </thead>
+            <tbody>
+              {recipients.map((r) => (
+                <tr key={r.id}>
+                  <td className="data">{r.email}</td>
+                  <td>{r.name ?? <span className="mut">—</span>}</td>
+                  <td className="n"><RemoveRecipientButton id={r.id} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="panel">
+        <header>
+          <span className="title">Preview</span>
+          <span className="label">What lands in the inbox</span>
         </header>
         <div
           className="pad"
           style={{ background: "var(--color-paper)" }}
-          // Preview the exact HTML that goes out. Safe: html is our own template, no user input.
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </section>
