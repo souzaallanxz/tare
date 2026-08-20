@@ -5,11 +5,13 @@ import { Money } from "../../components/money";
 import { Pill } from "../../components/pills";
 import { SpendBar } from "../../components/spend-bar";
 import { FIXTURE } from "../../lib/fixtures";
+import { requireSession } from "../../lib/session";
 
-export default function OverviewPage() {
+export default async function OverviewPage() {
+  const session = await requireSession();
   const pctOfBudget = ((FIXTURE.forecastMinor / FIXTURE.budgetMinor) * 100).toFixed(1);
   return (
-    <AppShell active="overview">
+    <AppShell active="overview" session={session}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
         <div>
           <h1 className="display">Overview</h1>

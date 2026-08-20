@@ -6,6 +6,7 @@
 --   * currencies are 3-letter ISO codes, checked
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS citext;
 
 -- ─────────────────────────── tenancy ───────────────────────────
 
@@ -28,8 +29,6 @@ CREATE TABLE "user" (
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
-CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE session (
   id           TEXT PRIMARY KEY,

@@ -1,11 +1,22 @@
+import { withTenant } from "@tare/db";
+import { listInvitations, listMembers } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
 import { Pill } from "../../components/pills";
+import { requireSession } from "../../lib/session";
+import { InviteForm } from "./invite-form";
+import { RemoveInviteButton, RemoveMemberButton } from "./row-actions";
 
 const REVOKE = `REVOKE USE CATALOG ON CATALOG system FROM \`tare-service-principal\`;`;
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const session = await requireSession();
+  const { members, invitations } = await withTenant(session.activeTenant.id, async (ctx) => ({
+    members: await listMembers(ctx),
+    invitations: await listInvitations(ctx),
+  }));
+
   return (
-    <AppShell active="settings">
+    <AppShell active="settings" session={session}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
         <div>
           <h1 className="display">Settings</h1>
@@ -33,17 +44,58 @@ export default function SettingsPage() {
       <section className="panel">
         <header>
           <span className="title">People</span>
-          <button className="btn ghost s">Invite</button>
         </header>
+        <div className="pad" style={{ borderBottom: "1px solid var(--color-rule)" }}>
+          <InviteForm />
+        </div>
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+          <thead>
+            <tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr>
+          </thead>
           <tbody>
-            <tr><td>Allan Ferreira</td><td className="data mut">allan@acme.example</td><td>Owner</td></tr>
-            <tr><td>Marta Silva</td><td className="data mut">marta@acme.example</td><td>Member</td></tr>
-            <tr><td>Finance</td><td className="data mut">finance@acme.example</td><td>Report recipient</td></tr>
+            {members.map((m) => (
+              <tr key={m.userId}>
+                <td>{m.name || <span className="mut">—</span>}</td>
+                <td className="data mut">{m.email}</td>
+                <td style={{ textTransform: "capitalize" }}>{m.role}</td>
+                <td className="n">
+                  {m.userId === session.user.id ? (
+                    <span className="mut" style={{ fontSize: 12 }}>you</span>
+                  ) : m.role === "owner" ? (
+                    <span className="mut" style={{ fontSize: 12 }}>—</span>
+                  ) : (
+                    <RemoveMemberButton userId={m.userId} />
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </section>
+
+      {invitations.length > 0 && (
+        <section className="panel">
+          <header>
+            <span className="title">Pending invitations</span>
+            <span className="label">Expire 72 hours after sending</span>
+          </header>
+          <table>
+            <thead>
+              <tr><th>Email</th><th>Role</th><th>Expires</th><th></th></tr>
+            </thead>
+            <tbody>
+              {invitations.map((inv) => (
+                <tr key={inv.id}>
+                  <td className="data">{inv.email}</td>
+                  <td style={{ textTransform: "capitalize" }}>{inv.role}</td>
+                  <td className="data mut">{formatDate(inv.expiresAt)}</td>
+                  <td className="n"><RemoveInviteButton id={inv.id} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       <section className="panel" style={{ borderLeft: "2px solid var(--color-overrun)" }}>
         <header><span className="title">End access</span></header>
@@ -70,4 +122,9 @@ export default function SettingsPage() {
       </section>
     </AppShell>
   );
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)}Z`;
 }

@@ -1,6 +1,7 @@
 import { AppShell } from "../../components/shell";
 import { Money } from "../../components/money";
 import { Pill } from "../../components/pills";
+import { requireSession } from "../../lib/session";
 
 const GRANTS = `GRANT USE CATALOG ON CATALOG system          TO \`tare-service-principal\`;
 GRANT SELECT ON SCHEMA      system.billing   TO \`tare-service-principal\`;
@@ -8,9 +9,10 @@ GRANT SELECT ON SCHEMA      system.compute   TO \`tare-service-principal\`;
 GRANT SELECT ON SCHEMA      system.lakeflow  TO \`tare-service-principal\`;
 GRANT SELECT ON SCHEMA      system.query     TO \`tare-service-principal\`;`;
 
-export default function ConnectPage() {
+export default async function ConnectPage() {
+  const session = await requireSession();
   return (
-    <AppShell active="connect">
+    <AppShell active="connect" session={session}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
         <div>
           <h1 className="display">Connection</h1>

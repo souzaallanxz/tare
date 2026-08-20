@@ -1,10 +1,12 @@
 import { AppShell } from "../../components/shell";
 import { Money } from "../../components/money";
 import { FIXTURE } from "../../lib/fixtures";
+import { requireSession } from "../../lib/session";
 
-export default function OwnersPage() {
+export default async function OwnersPage() {
+  const session = await requireSession();
   return (
-    <AppShell active="owners">
+    <AppShell active="owners" session={session}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
         <div>
           <h1 className="display">Owners</h1>

@@ -2,6 +2,7 @@ import { AppShell } from "../../components/shell";
 import { Money } from "../../components/money";
 import { BasisPill, StatePill } from "../../components/pills";
 import { FIXTURE } from "../../lib/fixtures";
+import { requireSession } from "../../lib/session";
 import type { RecommendationState } from "@tare/core";
 
 const SEQUENCE: RecommendationState[] = ["open", "accepted", "applied", "verifying", "confirmed"];
@@ -36,9 +37,10 @@ function Chain({ state }: { state: RecommendationState }) {
   );
 }
 
-export default function SavingsPage() {
+export default async function SavingsPage() {
+  const session = await requireSession();
   return (
-    <AppShell active="savings">
+    <AppShell active="savings" session={session}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
         <div>
           <h1 className="display">Savings</h1>

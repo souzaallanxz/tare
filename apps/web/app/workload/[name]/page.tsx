@@ -4,12 +4,14 @@ import { DailyChart } from "../../../components/daily-chart";
 import { Money } from "../../../components/money";
 import { Pill } from "../../../components/pills";
 import { FIXTURE } from "../../../lib/fixtures";
+import { requireSession } from "../../../lib/session";
 
 export default async function WorkloadPage({ params }: { params: Promise<{ name: string }> }) {
+  const session = await requireSession();
   const { name } = await params;
   const w = FIXTURE.workloads.find((x) => x.name === name) ?? FIXTURE.workloads[0]!;
   return (
-    <AppShell active="ledger">
+    <AppShell active="ledger" session={session}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
         <div>
           <p className="mut" style={{ fontSize: 13, margin: "0 0 6px" }}>

@@ -1,8 +1,10 @@
 import { AppShell } from "../../components/shell";
 import { renderWeeklyReport } from "@tare/email";
 import { FIXTURE } from "../../lib/fixtures";
+import { requireSession } from "../../lib/session";
 
-export default function ReportPage() {
+export default async function ReportPage() {
+  const session = await requireSession();
   const html = renderWeeklyReport({
     tenantName: "Acme Data",
     workspace: FIXTURE.workspace,
@@ -36,7 +38,7 @@ export default function ReportPage() {
   });
 
   return (
-    <AppShell active="report">
+    <AppShell active="report" session={session}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
         <div>
           <h1 className="display">Weekly report</h1>
