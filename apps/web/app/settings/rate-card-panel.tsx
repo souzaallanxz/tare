@@ -1,6 +1,10 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Button } from "../../components/ui/button";
+import { Textarea } from "../../components/ui/input";
+import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { clearRateCardAction, uploadRateCardAction } from "./rate-card-actions";
 
 type Entry = {
@@ -19,7 +23,6 @@ GPU_ML,2.10,2025-01-01`;
 export function RateCardPanel({ entries, currency }: { entries: Entry[]; currency: string }) {
   const [csv, setCsv] = useState("");
   const [pending, start] = useTransition();
-  const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [fileHint, setFileHint] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
 
@@ -33,22 +36,20 @@ export function RateCardPanel({ entries, currency }: { entries: Entry[]; currenc
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setMsg(null);
     start(async () => {
       const fd = new FormData();
       fd.set("csv", csv);
       const r = await uploadRateCardAction(fd);
-      if (r.ok) {
-        setMsg({
-          kind: "ok",
-          text: `Loaded ${r.entries} row${r.entries === 1 ? "" : "s"}. Reclassified ${r.reclassified} usage row${r.reclassified === 1 ? "" : "s"}.`,
-        });
-        setCsv("");
-        setFileHint(null);
-        if (fileInput.current) fileInput.current.value = "";
-      } else {
-        setMsg({ kind: "err", text: r.error });
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
       }
+      toast.success(
+        `Loaded ${r.entries} row${r.entries === 1 ? "" : "s"}. Reclassified ${r.reclassified} usage row${r.reclassified === 1 ? "" : "s"}.`,
+      );
+      setCsv("");
+      setFileHint(null);
+      if (fileInput.current) fileInput.current.value = "";
     });
   }
 
@@ -56,42 +57,44 @@ export function RateCardPanel({ entries, currency }: { entries: Entry[]; currenc
     if (!confirm("Clear the rate card? All historical costs will fall back to list price (estimated).")) return;
     start(async () => {
       const r = await clearRateCardAction();
-      setMsg({ kind: "ok", text: `Rate card cleared. Reclassified ${r.reclassified} rows to estimated.` });
+      toast.success(`Rate card cleared. Reclassified ${r.reclassified} rows to estimated.`);
     });
   }
 
   return (
     <>
-      <div className="pad" style={{ borderBottom: "1px solid var(--color-rule)" }}>
-        <p className="mut" style={{ margin: "0 0 12px", maxWidth: "72ch", fontSize: 14 }}>
-          CSV columns: <span className="data">sku,rate,effective_from</span>. Rate is in major units
-          (e.g. <span className="data">0.30</span> for €0.30 per DBU). The card fully replaces any
-          previous one. Upload runs a reclassification pass — historic <span className="data">estimated</span>{" "}
-          rows become <span className="data">billed</span> without re-reading Databricks.
+      <div className="px-4 py-4 border-b border-rule">
+        <p className="text-muted mb-3 max-w-[72ch] text-[14px]">
+          CSV columns: <span className="font-mono">sku,rate,effective_from</span>. Rate in major units
+          (e.g. <span className="font-mono">0.30</span> for €0.30 per DBU). Upload replaces the entire
+          card and runs a reclassification pass — historic{" "}
+          <span className="font-mono">estimated</span> rows become{" "}
+          <span className="font-mono">billed</span> without re-reading Databricks.
         </p>
 
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <form onSubmit={onSubmit} className="grid gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               ref={fileInput}
               type="file"
               accept=".csv,text/csv"
               onChange={onFile}
-              style={{ fontSize: 13 }}
+              className="text-[13px]"
             />
-            <button
+            <Button
               type="button"
-              className="btn ghost s"
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setCsv(SAMPLE);
                 setFileHint(null);
               }}
             >
               Fill sample
-            </button>
-            {fileHint ? <span className="mut" style={{ fontSize: 12 }}>{fileHint}</span> : null}
+            </Button>
+            {fileHint ? <span className="text-muted text-[12px]">{fileHint}</span> : null}
           </div>
-          <textarea
+          <Textarea
             name="csv"
             value={csv}
             onChange={(e) => {
@@ -100,68 +103,50 @@ export function RateCardPanel({ entries, currency }: { entries: Entry[]; currenc
             }}
             placeholder="Paste CSV here, or upload a file above."
             rows={7}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: "1px solid var(--color-rule)",
-              background: "var(--color-surface)",
-              fontFamily: "var(--font-mono)",
-              fontSize: 12.5,
-              color: "var(--color-ink)",
-              resize: "vertical",
-            }}
           />
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <button className="btn s" type="submit" disabled={pending || !csv.trim()}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" type="submit" disabled={pending || !csv.trim()}>
               {pending ? "Applying…" : "Upload and reclassify"}
-            </button>
+            </Button>
             {entries.length > 0 ? (
-              <button type="button" className="btn ghost s" disabled={pending} onClick={onClear}>
+              <Button type="button" variant="ghost" size="sm" disabled={pending} onClick={onClear}>
                 Clear rate card
-              </button>
-            ) : null}
-            {msg ? (
-              <span
-                style={{
-                  fontSize: 13,
-                  color: msg.kind === "ok" ? "var(--color-recovered)" : "var(--color-overrun)",
-                }}
-              >
-                {msg.text}
-              </span>
+              </Button>
             ) : null}
           </div>
         </form>
       </div>
 
       {entries.length === 0 ? (
-        <div className="pad mut">
-          No rate card in place. Every cost reads as <span className="data">estimated</span>, priced at list.
+        <div className="px-4 py-4 text-muted">
+          No rate card in place. Every cost reads as <span className="font-mono">estimated</span>, priced at list.
         </div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>SKU</th><th className="n">Rate</th><th>Effective from</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <THead>
+            <TR>
+              <TH>SKU</TH>
+              <TH className="text-right">Rate</TH>
+              <TH>Effective from</TH>
+            </TR>
+          </THead>
+          <TBody>
             {entries.map((e) => (
-              <tr key={`${e.sku}-${e.effectiveFrom}`}>
-                <td className="data">{e.sku}</td>
-                <td className="n data">
+              <TR key={`${e.sku}-${e.effectiveFrom}`}>
+                <TD className="font-mono">{e.sku}</TD>
+                <TD className="text-right font-mono tabular-nums">
                   {new Intl.NumberFormat("en-IE", {
                     style: "currency",
                     currency,
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 4,
                   }).format(e.rateMinor / 100)}
-                </td>
-                <td className="data mut">{e.effectiveFrom}</td>
-              </tr>
+                </TD>
+                <TD className="font-mono text-muted">{e.effectiveFrom}</TD>
+              </TR>
             ))}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       )}
     </>
   );

@@ -56,35 +56,9 @@ html, body {
   letter-spacing: -0.022em;
   margin: 0;
 }
-.panel {
-  background: var(--color-surface);
-  border: 1px solid var(--color-rule);
-  margin-bottom: 24px;
-}
-.panel > header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 13px 16px;
-  border-bottom: 1px solid var(--color-rule);
-  flex-wrap: wrap;
-}
-.panel .title { font-size: 20px; font-weight: 500; }
-.pad { padding: 16px; }
-.sel {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--color-rule);
-  background: var(--color-surface);
-  padding: 5px 10px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--color-ink);
-  cursor: pointer;
-}
-.sel:hover { border-color: var(--color-ink); }
+/* .panel/.pad/.title/.sel/.kpi removed once every server component moved to
+   the shadcn primitives. .btn stays for the public pages (login/signup/
+   marketing/invite acceptance) that still render outside the app shell. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -121,29 +95,6 @@ td {
   font-size: 14px;
 }
 th.n, td.n { text-align: right; }
-.kpis {
-  display: grid;
-  gap: 1px;
-  background: var(--color-rule);
-  border: 1px solid var(--color-rule);
-  margin-bottom: 24px;
-  grid-template-columns: repeat(4, 1fr);
-}
-.kpi { background: var(--color-surface); padding: 18px; }
-.kpi .v {
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  margin: 8px 0 4px;
-  display: inline-block;
-}
-.kpi .v.est { color: var(--color-estimated); border-bottom: 1px dotted var(--color-estimated); padding-bottom: 2px; }
-.kpi .v.rec { color: var(--color-recovered); }
-.kpi .v.ovr { color: var(--color-overrun); }
-.kpi .n { font-size: 12.5px; color: var(--color-muted); display: block; }
-
 /* The signature bar: measured | estimated | limit. */
 .spend-bar {
   position: relative;

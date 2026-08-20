@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Button } from "../../components/ui/button";
+import { Input, Label } from "../../components/ui/input";
+import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { deleteBudgetAction, saveBudgetAction } from "./budget-actions";
 
 type BudgetView = {
@@ -41,16 +45,26 @@ function fromBudget(b: BudgetView): EditState {
   };
 }
 
-export function BudgetSection({ budgets, owners, currency }: { budgets: BudgetView[]; owners: Owner[]; currency: string }) {
+const selectCls =
+  "h-9 w-full px-2.5 border border-rule bg-surface text-ink font-mono text-[12.5px] hover:border-ink " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink";
+
+export function BudgetSection({
+  budgets,
+  owners,
+  currency,
+}: {
+  budgets: BudgetView[];
+  owners: Owner[];
+  currency: string;
+}) {
   const [state, setState] = useState<EditState>(EMPTY);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   function reset() {
     setState(EMPTY);
     setEditingId(null);
-    setError(null);
   }
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -58,23 +72,30 @@ export function BudgetSection({ budgets, owners, currency }: { budgets: BudgetVi
     const fd = new FormData(e.currentTarget);
     start(async () => {
       const r = await saveBudgetAction(fd);
-      if (r.ok) reset();
-      else setError(r.error);
+      if (r.ok) {
+        toast.success(editingId ? "Budget updated." : "Budget saved.");
+        reset();
+      } else {
+        toast.error(r.error);
+      }
     });
   }
 
   return (
     <>
-      <div className="pad" style={{ borderBottom: "1px solid var(--color-rule)" }}>
-        <form onSubmit={submit} style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(5, 1fr) auto auto", alignItems: "end" }}>
+      <div className="px-4 py-4 border-b border-rule">
+        <form
+          onSubmit={submit}
+          className="grid gap-2.5 md:grid-cols-[repeat(5,minmax(0,1fr))_auto_auto] items-end"
+        >
           <div>
-            <label className="label" htmlFor="scopeType">Scope</label>
+            <Label htmlFor="scopeType">Scope</Label>
             <select
               id="scopeType"
               name="scopeType"
               value={state.scopeType}
               onChange={(e) => setState({ ...state, scopeType: e.target.value as "workspace" | "owner" })}
-              style={ip}
+              className={selectCls}
             >
               <option value="workspace">Workspace</option>
               <option value="owner">Owner</option>
@@ -82,14 +103,14 @@ export function BudgetSection({ budgets, owners, currency }: { budgets: BudgetVi
           </div>
           {state.scopeType === "owner" ? (
             <div>
-              <label className="label" htmlFor="ownerId">Owner</label>
+              <Label htmlFor="ownerId">Owner</Label>
               <select
                 id="ownerId"
                 name="ownerId"
                 required
                 value={state.ownerId}
                 onChange={(e) => setState({ ...state, ownerId: e.target.value })}
-                style={ip}
+                className={selectCls}
               >
                 <option value="">Choose…</option>
                 {owners.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
@@ -99,21 +120,21 @@ export function BudgetSection({ budgets, owners, currency }: { budgets: BudgetVi
             <div />
           )}
           <div>
-            <label className="label" htmlFor="period">Period</label>
+            <Label htmlFor="period">Period</Label>
             <select
               id="period"
               name="period"
               value={state.period}
               onChange={(e) => setState({ ...state, period: e.target.value as "monthly" | "quarterly" })}
-              style={ip}
+              className={selectCls}
             >
               <option value="monthly">monthly</option>
               <option value="quarterly">quarterly</option>
             </select>
           </div>
           <div>
-            <label className="label" htmlFor="limitEuros">Limit ({currency})</label>
-            <input
+            <Label htmlFor="limitEuros">Limit ({currency})</Label>
+            <Input
               id="limitEuros"
               name="limitEuros"
               type="number"
@@ -122,12 +143,11 @@ export function BudgetSection({ budgets, owners, currency }: { budgets: BudgetVi
               required
               value={state.limitEuros}
               onChange={(e) => setState({ ...state, limitEuros: e.target.value })}
-              style={ip}
             />
           </div>
           <div>
-            <label className="label" htmlFor="thresholdPct">Warn at (%)</label>
-            <input
+            <Label htmlFor="thresholdPct">Warn at (%)</Label>
+            <Input
               id="thresholdPct"
               name="thresholdPct"
               type="number"
@@ -136,60 +156,69 @@ export function BudgetSection({ budgets, owners, currency }: { budgets: BudgetVi
               required
               value={state.thresholdPct}
               onChange={(e) => setState({ ...state, thresholdPct: e.target.value })}
-              style={ip}
             />
           </div>
-          <button className="btn s" type="submit" disabled={pending}>
+          <Button size="sm" type="submit" disabled={pending}>
             {pending ? "Saving…" : editingId ? "Update budget" : "Save budget"}
-          </button>
+          </Button>
           {editingId ? (
-            <button type="button" className="btn ghost s" onClick={reset}>Cancel</button>
-          ) : <span />}
-          {error ? (
-            <p style={{ gridColumn: "1 / -1", color: "var(--color-overrun)", fontSize: 13, margin: 0 }}>{error}</p>
-          ) : null}
+            <Button variant="ghost" size="sm" type="button" onClick={reset}>
+              Cancel
+            </Button>
+          ) : (
+            <span />
+          )}
         </form>
       </div>
 
       {budgets.length === 0 ? (
-        <div className="pad mut">No budgets yet. Overview will fall back to a computed ruler.</div>
+        <div className="px-4 py-4 text-muted">
+          No budgets yet. Overview will fall back to a computed ruler.
+        </div>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Scope</th><th>Period</th><th className="n">Limit</th><th className="n">Warn at</th><th className="n"></th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <THead>
+            <TR>
+              <TH>Scope</TH>
+              <TH>Period</TH>
+              <TH className="text-right">Limit</TH>
+              <TH className="text-right">Warn at</TH>
+              <TH className="text-right" />
+            </TR>
+          </THead>
+          <TBody>
             {budgets.map((b) => (
-              <tr
-                key={b.id}
-                style={{ background: b.id === editingId ? "rgba(16,26,43,.04)" : undefined }}
-              >
-                <td>{b.scopeLabel}</td>
-                <td className="data mut">{b.period}</td>
-                <td className="n data">
-                  {new Intl.NumberFormat("en-IE", { style: "currency", currency: b.currency, minimumFractionDigits: 2 }).format(b.limitMinor / 100)}
-                </td>
-                <td className="n data">{b.thresholdPct}%</td>
-                <td className="n" style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                  <button
-                    className="btn ghost s"
-                    type="button"
-                    onClick={() => {
-                      setEditingId(b.id);
-                      setState(fromBudget(b));
-                      setError(null);
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <DeleteButton id={b.id} onDone={() => editingId === b.id && reset()} />
-                </td>
-              </tr>
+              <TR key={b.id} className={b.id === editingId ? "bg-ink/[.04]" : undefined}>
+                <TD>{b.scopeLabel}</TD>
+                <TD className="font-mono text-muted">{b.period}</TD>
+                <TD className="text-right font-mono tabular-nums">
+                  {new Intl.NumberFormat("en-IE", {
+                    style: "currency",
+                    currency: b.currency,
+                    minimumFractionDigits: 2,
+                  }).format(b.limitMinor / 100)}
+                </TD>
+                <TD className="text-right font-mono tabular-nums">{b.thresholdPct}%</TD>
+                <TD className="text-right">
+                  <span className="flex gap-1.5 justify-end">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => {
+                        setEditingId(b.id);
+                        setState(fromBudget(b));
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <DeleteButton id={b.id} onDone={() => editingId === b.id && reset()} />
+                  </span>
+                </TD>
+              </TR>
             ))}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       )}
     </>
   );
@@ -198,8 +227,9 @@ export function BudgetSection({ budgets, owners, currency }: { budgets: BudgetVi
 function DeleteButton({ id, onDone }: { id: string; onDone: () => void }) {
   const [pending, start] = useTransition();
   return (
-    <button
-      className="btn ghost s"
+    <Button
+      variant="ghost"
+      size="sm"
       type="button"
       disabled={pending}
       onClick={() =>
@@ -210,15 +240,6 @@ function DeleteButton({ id, onDone }: { id: string; onDone: () => void }) {
       }
     >
       {pending ? "…" : "Delete"}
-    </button>
+    </Button>
   );
 }
-
-const ip: React.CSSProperties = {
-  width: "100%",
-  padding: "8px 10px",
-  border: "1px solid var(--color-rule)",
-  background: "var(--color-surface)",
-  fontFamily: "var(--font-mono)",
-  fontSize: 12.5,
-};

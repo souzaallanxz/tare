@@ -1,13 +1,15 @@
 "use client";
 
 import { useTransition } from "react";
+import { Button } from "../../components/ui/button";
 import { removeMemberAction, revokeInvitationAction } from "./actions";
 
 export function RemoveMemberButton({ userId }: { userId: string }) {
   const [pending, start] = useTransition();
   return (
-    <button
-      className="btn ghost s"
+    <Button
+      variant="ghost"
+      size="sm"
       disabled={pending}
       onClick={() => {
         if (!confirm("Remove this member from the tenant?")) return;
@@ -15,19 +17,15 @@ export function RemoveMemberButton({ userId }: { userId: string }) {
       }}
     >
       {pending ? "Removing…" : "Remove"}
-    </button>
+    </Button>
   );
 }
 
 export function RemoveInviteButton({ id }: { id: string }) {
   const [pending, start] = useTransition();
   return (
-    <button
-      className="btn ghost s"
-      disabled={pending}
-      onClick={() => start(() => revokeInvitationAction(id))}
-    >
+    <Button variant="ghost" size="sm" disabled={pending} onClick={() => start(() => revokeInvitationAction(id))}>
       {pending ? "…" : "Revoke"}
-    </button>
+    </Button>
   );
 }

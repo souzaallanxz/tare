@@ -1,58 +1,60 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Button } from "../../components/ui/button";
+import { Input, Label } from "../../components/ui/input";
 import { inviteMemberAction } from "./actions";
+
+const selectCls =
+  "h-9 px-2.5 border border-rule bg-surface text-ink font-mono text-[12.5px] hover:border-ink " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink";
 
 export function InviteForm() {
   const [pending, start] = useTransition();
-  const [result, setResult] = useState<{ ok: true; url: string } | { ok: false; error: string } | null>(null);
+  const [link, setLink] = useState<string | null>(null);
 
   return (
     <form
+      id="invite-form"
       action={(fd) =>
         start(async () => {
           const r = await inviteMemberAction(fd);
-          setResult(r);
+          if (!r.ok) {
+            toast.error(r.error);
+            return;
+          }
+          toast.success("Invite created.");
+          setLink(r.url);
+          (document.getElementById("invite-form") as HTMLFormElement | null)?.reset();
         })
       }
-      style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}
+      className="flex flex-wrap items-end gap-2"
     >
-      <div style={{ flex: 1, minWidth: 240 }}>
-        <label className="label" htmlFor="invite-email">Email</label>
-        <input
+      <div className="flex-1 min-w-[240px]">
+        <Label htmlFor="invite-email">Email</Label>
+        <Input
           id="invite-email"
           name="email"
           type="email"
           required
           placeholder="finance@acme.example"
-          style={{
-            width: "100%",
-            padding: "8px 12px",
-            border: "1px solid var(--color-rule)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 13,
-            background: "var(--color-surface)",
-          }}
         />
       </div>
-      <select
-        name="role"
-        defaultValue="member"
-        style={{ padding: "8px 12px", border: "1px solid var(--color-rule)", background: "var(--color-surface)", fontSize: 13 }}
-      >
-        <option value="member">Member</option>
-        <option value="owner">Owner</option>
-      </select>
-      <button className="btn s" type="submit" disabled={pending}>
+      <div>
+        <Label htmlFor="invite-role">Role</Label>
+        <select id="invite-role" name="role" defaultValue="member" className={selectCls}>
+          <option value="member">Member</option>
+          <option value="owner">Owner</option>
+        </select>
+      </div>
+      <Button size="sm" type="submit" disabled={pending}>
         {pending ? "Sending…" : "Send invite"}
-      </button>
+      </Button>
 
-      {result && !result.ok ? (
-        <p style={{ width: "100%", color: "var(--color-overrun)", fontSize: 13, margin: 0 }}>{result.error}</p>
-      ) : null}
-      {result && result.ok ? (
-        <p style={{ width: "100%", color: "var(--color-muted)", fontSize: 12, margin: 0, fontFamily: "var(--font-mono)" }}>
-          Link (email provider not yet wired): <a href={result.url}>{result.url}</a>
+      {link ? (
+        <p className="basis-full text-muted text-[12px] font-mono m-0">
+          Link (email provider not yet wired): <a href={link} className="underline">{link}</a>
         </p>
       ) : null}
     </form>
