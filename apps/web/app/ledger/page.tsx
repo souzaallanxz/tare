@@ -103,7 +103,11 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
                 {rows.map((r, i) => (
                   <tr key={`${r.entity_id}-${r.usage_date}-${r.sku}-${i}`}>
                     <td className="data mut">{formatDate(r.usage_date)}</td>
-                    <td style={{ fontWeight: 500 }}>{r.entity}</td>
+                    <td style={{ fontWeight: 500 }}>
+                      <Link href={`/workload/${encodeURIComponent(r.entity)}` as never} style={{ color: "inherit" }}>
+                        {r.entity}
+                      </Link>
+                    </td>
                     <td className="mut" style={{ fontSize: 13 }}>{r.kind}</td>
                     <td className="data mut">{r.sku}</td>
                     <td>{r.owner_name ?? <Pill variant="ovr">unassigned</Pill>}</td>

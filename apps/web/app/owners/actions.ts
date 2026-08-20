@@ -74,5 +74,7 @@ export async function assignManualOwnerAction(
   });
   revalidatePath("/owners");
   revalidatePath("/overview");
+  revalidatePath("/ledger");
+  revalidatePath("/workload/[name]", "page");
   return { ok: true };
 }
