@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  /* Semantic tokens — the whole visual system. */
+  /* Semantic tokens — the whole visual system.
+     Named twice: the primary name (--color-ink) is what Tailwind exposes as
+     `bg-ink`, `text-ink`, etc; --color-muted avoids Tailwind's built-in
+     `muted` conflict. */
   --color-ink: #101A2B;
   --color-paper: #F1F3F6;
   --color-surface: #FFFFFF;

@@ -2,8 +2,7 @@ import Link from "next/link";
 import { withTenant } from "@tare/db";
 import { listOwners, type Owner } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
-import { Money } from "../../components/money";
-import { BasisPill, Pill } from "../../components/pills";
+import { LedgerTable, type LedgerRow } from "../../components/ledger-table";
 import { requireSession } from "../../lib/session";
 import type { Basis, EntityKind } from "@tare/core";
 
@@ -52,7 +51,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
     );
 
     params.push(PAGE_SIZE, page * PAGE_SIZE);
-    const rowsRes = await ctx.query<LedgerRow>(
+    const rowsRes = await ctx.query<LedgerRowServer>(
       `SELECT u.usage_date, e.name AS entity, e.kind::text AS kind, u.sku,
               u.dbus, u.cost_minor, u.cost_basis, u.currency, u.entity_id,
               o.name AS owner_name
@@ -88,42 +87,8 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
           />
         </header>
 
-        {rows.length === 0 ? (
-          <div className="pad mut">No usage rows for those filters.</div>
-        ) : (
-          <>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th><th>Entity</th><th>Kind</th><th>SKU</th><th>Owner</th>
-                  <th className="n">DBUs</th><th className="n">Cost</th><th>Basis</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={`${r.entity_id}-${r.usage_date}-${r.sku}-${i}`}>
-                    <td className="data mut">{formatDate(r.usage_date)}</td>
-                    <td style={{ fontWeight: 500 }}>
-                      <Link href={`/workload/${encodeURIComponent(r.entity)}` as never} style={{ color: "inherit" }}>
-                        {r.entity}
-                      </Link>
-                    </td>
-                    <td className="mut" style={{ fontSize: 13 }}>{r.kind}</td>
-                    <td className="data mut">{r.sku}</td>
-                    <td>{r.owner_name ?? <Pill variant="ovr">unassigned</Pill>}</td>
-                    <td className="n data">{Number(r.dbus).toFixed(1)}</td>
-                    <td className="n">
-                      <Money amount={r.cost_minor} basis={r.cost_basis} currency={r.currency as "EUR" | "USD"} />
-                    </td>
-                    <td><BasisPill basis={r.cost_basis} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <Pagination page={page} pageSize={PAGE_SIZE} total={total} search={sp} />
-          </>
-        )}
+        <LedgerTable rows={rowsForClient(rows)} />
+        {rows.length > 0 && <Pagination page={page} pageSize={PAGE_SIZE} total={total} search={sp} />}
       </section>
     </AppShell>
   );
@@ -131,7 +96,26 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
 
 // ─── helpers ────────────────────────────────────────────────
 
-type LedgerRow = {
+function str(v: string | string[] | undefined): string {
+  return typeof v === "string" ? v : "";
+}
+
+function rowsForClient(rows: readonly LedgerRowServer[]): LedgerRow[] {
+  return rows.map((r, i) => ({
+    id: `${r.entity_id}-${r.usage_date}-${r.sku}-${i}`,
+    usageDate: r.usage_date,
+    entity: r.entity,
+    kind: r.kind,
+    sku: r.sku,
+    dbus: Number(r.dbus),
+    costMinor: Number(r.cost_minor),
+    costBasis: r.cost_basis,
+    currency: r.currency as "EUR" | "USD",
+    ownerName: r.owner_name,
+  }));
+}
+
+type LedgerRowServer = {
   usage_date: string;
   entity: string;
   kind: string;
@@ -143,15 +127,6 @@ type LedgerRow = {
   entity_id: string;
   owner_name: string | null;
 };
-
-function str(v: string | string[] | undefined): string {
-  return typeof v === "string" ? v : "";
-}
-
-function formatDate(s: string): string {
-  const d = new Date(`${s}T00:00:00Z`);
-  return d.toLocaleDateString("en-IE", { day: "2-digit", month: "short" });
-}
 
 function FilterForm({
   owners,

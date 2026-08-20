@@ -1,67 +1,70 @@
+"use client";
+
+import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+
 type Props = {
   dailyMinor: readonly number[];
   billedDays: number;
   height?: number;
+  currency?: "EUR" | "USD";
 };
 
-/** Solid bars up to billedDays, 135° hatched after — matches the spend bar. */
-export function DailyChart({ dailyMinor, billedDays, height = 148 }: Props) {
-  const w = 680;
-  const pad = 16;
-  const max = Math.max(...dailyMinor, 1);
-  const bw = (w - pad * 2) / dailyMinor.length;
+const INK = "#101A2B";
+const ESTIMATED = "#7A6CA8";
+
+/**
+ * Recharts bar chart. Same semantic split as before: bars up to `billedDays`
+ * paint solid ink (billed), bars after paint violet (estimated). The estimated
+ * treatment is colour-encoded — the hatched fill from the SVG version drops
+ * because Recharts doesn't cleanly support pattern fills per-bar. Colour +
+ * word in the tooltip carry the invariant.
+ */
+export function DailyChart({ dailyMinor, billedDays, height = 160, currency = "EUR" }: Props) {
+  const data = dailyMinor.map((v, i) => ({
+    day: i + 1,
+    cost: v / 100,
+    billed: i < billedDays,
+  }));
 
   return (
-    <svg
-      viewBox={`0 0 ${w} ${height}`}
-      width="100%"
-      role="img"
-      aria-label="Daily spend; forecast bars are hatched"
-    >
-      <defs>
-        <pattern id="hatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(135)">
-          <rect width="6" height="6" fill="#7A6CA8" />
-          <rect width="2" height="6" fill="#fff" opacity=".55" />
-        </pattern>
-      </defs>
-      <line x1={pad} y1={height - 26} x2={w - pad} y2={height - 26} stroke="#D7DDE5" />
-      {dailyMinor.map((v, i) => {
-        const bh = Math.max(2, (v / max) * (height - 44));
-        const x = pad + i * bw;
-        const y = height - 26 - bh;
-        const billed = i < billedDays;
-        return (
-          <g key={i}>
-            <rect
-              x={x + 1}
-              y={y}
-              width={bw - 2}
-              height={bh}
-              rx={1}
-              fill={billed ? "#101A2B" : "url(#hatch)"}
-              stroke={billed ? undefined : "#7A6CA8"}
-              strokeWidth={billed ? undefined : 0.5}
-            >
-              <title>
-                {i + 1} · €{(v / 100).toLocaleString("en-IE", { minimumFractionDigits: 2 })} ·{" "}
-                {billed ? "billed" : "estimated"}
-              </title>
-            </rect>
-            {(i % 7 === 0 || i === dailyMinor.length - 1) && (
-              <text
-                x={x + bw / 2}
-                y={height - 9}
-                fontFamily="var(--font-mono)"
-                fontSize={10}
-                fill="#5A6675"
-                textAnchor="middle"
-              >
-                {i + 1}
-              </text>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+    <div style={{ width: "100%", height }}>
+      <ResponsiveContainer>
+        <BarChart data={data} margin={{ top: 6, right: 6, left: 6, bottom: 0 }} barCategoryGap={2}>
+          <XAxis
+            dataKey="day"
+            tick={{ fontFamily: "var(--font-mono)", fontSize: 10, fill: "#5A6675" }}
+            tickLine={false}
+            axisLine={{ stroke: "#D7DDE5" }}
+            interval={6}
+          />
+          <YAxis hide />
+          <Tooltip
+            cursor={{ fill: "rgba(16,26,43,.05)" }}
+            contentStyle={{
+              background: "#FFFFFF",
+              border: "1px solid #D7DDE5",
+              borderRadius: 0,
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              padding: "6px 10px",
+            }}
+            formatter={(value: number, _n, p) => {
+              const basis = (p.payload as { billed: boolean }).billed ? "billed" : "estimated";
+              return [
+                `${new Intl.NumberFormat("en-IE", { style: "currency", currency, maximumFractionDigits: 2 }).format(value)} · ${basis}`,
+                "",
+              ];
+            }}
+            labelFormatter={(label) => `Day ${label}`}
+            separator=""
+          />
+          <Bar dataKey="cost" radius={[1, 1, 0, 0]}>
+            {data.map((d, i) => (
+              <Cell key={i} fill={d.billed ? INK : ESTIMATED} fillOpacity={d.billed ? 1 : 0.7} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }

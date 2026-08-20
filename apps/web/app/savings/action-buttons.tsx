@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { toast } from "sonner";
 import type { RecommendationState } from "@tare/core";
 import { runVerificationSweepAction, transitionAction } from "./actions";
 
@@ -40,7 +41,7 @@ export function SweepButton() {
       onClick={() =>
         start(async () => {
           const r = await runVerificationSweepAction();
-          alert(
+          toast.success(
             `Checked ${r.checked} · ${r.confirmed} confirmed · ${r.notObserved} not observed.`,
           );
         })
