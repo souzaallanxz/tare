@@ -3,12 +3,13 @@
 import { useTransition } from "react";
 import { toast } from "sonner";
 import type { RecommendationState } from "@tare/core";
+import { Button } from "../../components/ui/button";
 import { runVerificationSweepAction, transitionAction } from "./actions";
 
 const NEXT: Partial<Record<RecommendationState, { label: string; steps: RecommendationState[] }>> = {
-  open:     { label: "Accept",       steps: ["accepted"] },
-  accepted: { label: "Mark applied", steps: ["applied", "verifying"] },
-  applied:  { label: "Start verifying", steps: ["verifying"] },
+  open:     { label: "Accept",           steps: ["accepted"] },
+  accepted: { label: "Mark applied",     steps: ["applied", "verifying"] },
+  applied:  { label: "Start verifying",  steps: ["verifying"] },
 };
 
 export function TransitionButton({ id, state }: { id: string; state: RecommendationState }) {
@@ -16,8 +17,8 @@ export function TransitionButton({ id, state }: { id: string; state: Recommendat
   const cfg = NEXT[state];
   if (!cfg) return null;
   return (
-    <button
-      className="btn s"
+    <Button
+      size="sm"
       disabled={pending}
       onClick={() =>
         start(async () => {
@@ -28,15 +29,16 @@ export function TransitionButton({ id, state }: { id: string; state: Recommendat
       }
     >
       {pending ? "…" : cfg.label}
-    </button>
+    </Button>
   );
 }
 
 export function SweepButton() {
   const [pending, start] = useTransition();
   return (
-    <button
-      className="btn ghost s"
+    <Button
+      variant="ghost"
+      size="sm"
       disabled={pending}
       onClick={() =>
         start(async () => {
@@ -48,6 +50,6 @@ export function SweepButton() {
       }
     >
       {pending ? "Sweeping…" : "Run verification sweep"}
-    </button>
+    </Button>
   );
 }

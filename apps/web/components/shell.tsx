@@ -1,19 +1,20 @@
 import Link from "next/link";
 import { withTenant } from "@tare/db";
 import { Lockup } from "./logo";
-import { Pill } from "./pills";
+import { Badge } from "./ui/badge";
 import { SignOut } from "./sign-out";
 import { FIXTURE } from "../lib/fixtures";
+import { cn } from "../lib/cn";
 import type { ActiveSession } from "../lib/session";
 
 const NAV = [
-  { href: "/overview", label: "Overview", key: "overview" },
-  { href: "/ledger",   label: "Ledger",   key: "ledger" },
-  { href: "/owners",   label: "Owners",   key: "owners" },
-  { href: "/savings",  label: "Savings",  key: "savings" },
-  { href: "/report",   label: "Weekly report", key: "report" },
-  { href: "/connect",  label: "Connection",    key: "connect" },
-  { href: "/settings", label: "Settings",      key: "settings" },
+  { href: "/overview", label: "Overview",        key: "overview" },
+  { href: "/ledger",   label: "Ledger",          key: "ledger" },
+  { href: "/owners",   label: "Owners",          key: "owners" },
+  { href: "/savings",  label: "Savings",         key: "savings" },
+  { href: "/report",   label: "Weekly report",   key: "report" },
+  { href: "/connect",  label: "Connection",      key: "connect" },
+  { href: "/settings", label: "Settings",        key: "settings" },
 ] as const;
 
 type Props = {
@@ -25,23 +26,14 @@ type Props = {
 export async function AppShell({ active, session, children }: Props) {
   const { user, activeTenant } = session;
   const freshness = await getFreshness(activeTenant.id);
+  const isFixture = freshness.startsWith("Fixture");
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "222px 1fr", minHeight: "100vh" }}>
-      <aside
-        style={{
-          background: "var(--color-ink)",
-          color: "#9AA6B8",
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div style={{ padding: "20px 18px" }}>
+    <div className="grid grid-cols-1 lg:grid-cols-[222px_1fr] min-h-screen">
+      <aside className="bg-ink text-[#9AA6B8] lg:sticky lg:top-0 lg:h-screen flex flex-col">
+        <div className="p-5">
           <Link href="/"><Lockup variant="dark" /></Link>
         </div>
-        <nav style={{ padding: "6px 10px", flex: 1 }}>
+        <nav className="px-2.5 py-1.5 flex-1">
           {NAV.map((n) => {
             const on = active === n.key;
             return (
@@ -49,73 +41,47 @@ export async function AppShell({ active, session, children }: Props) {
                 key={n.href}
                 href={n.href as never}
                 aria-current={on ? "page" : undefined}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 10px",
-                  fontSize: 14,
-                  color: on ? "#fff" : "#9AA6B8",
-                  background: on ? "rgba(255,255,255,.11)" : "transparent",
-                  textDecoration: "none",
-                }}
+                className={cn(
+                  "flex items-center gap-2.5 px-2.5 py-2 text-sm no-underline",
+                  on ? "text-white bg-white/10" : "text-[#9AA6B8] hover:text-white",
+                )}
               >
                 {n.label}
               </Link>
             );
           })}
         </nav>
-        <div style={{ padding: "14px 18px", borderTop: "1px solid rgba(255,255,255,.12)", fontSize: 13 }}>
-          <div style={{ color: "#fff" }}>{user.name || user.email}</div>
-          <div style={{ fontSize: 12 }}>{activeTenant.name} · owner</div>
-          <div style={{ marginTop: 10 }}><SignOut /></div>
+        <div className="px-5 py-3.5 border-t border-white/10 text-[13px]">
+          <div className="text-white">{user.name || user.email}</div>
+          <div className="text-[12px]">{activeTenant.name} · owner</div>
+          <div className="mt-2.5"><SignOut /></div>
         </div>
       </aside>
-      <main style={{ minWidth: 0 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            padding: "13px 26px",
-            borderBottom: "1px solid var(--color-rule)",
-            background: "var(--color-surface)",
-            position: "sticky",
-            top: 0,
-            zIndex: 5,
-            flexWrap: "wrap",
-          }}
-        >
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="sel">workspace: {FIXTURE.workspace} ⌄</button>
-            <button className="sel">{FIXTURE.period} ⌄</button>
+
+      <main className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-3 border-b border-rule bg-surface sticky top-0 z-10">
+          <div className="flex flex-wrap gap-2.5">
+            <button className="inline-flex items-center gap-2 px-2.5 h-8 border border-rule bg-surface text-ink font-mono text-[12px] hover:border-ink">
+              workspace: {FIXTURE.workspace} ⌄
+            </button>
+            <button className="inline-flex items-center gap-2 px-2.5 h-8 border border-rule bg-surface text-ink font-mono text-[12px] hover:border-ink">
+              {FIXTURE.period} ⌄
+            </button>
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <Pill variant="ink">billed</Pill>
-            <Pill variant="est">estimated</Pill>
-            <span style={{ color: "var(--color-muted)", fontSize: 13 }}>
-              {freshness}
-            </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="ink">billed</Badge>
+            <Badge variant="estimated">estimated</Badge>
+            <span className="text-muted text-[13px]">{freshness}</span>
           </div>
         </div>
-        {freshness.startsWith("Fixture") ? (
-          <div
-            style={{
-              padding: "7px 26px",
-              borderBottom: "1px solid var(--color-rule)",
-              background: "rgba(122,108,168,.09)",
-              color: "var(--color-estimated)",
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: ".12em",
-            }}
-          >
+
+        {isFixture ? (
+          <div className="px-6 py-1.5 border-b border-rule bg-estimated/10 text-estimated font-mono text-[11px] uppercase tracking-[.12em]">
             Fixture data · no workspace has ingested yet
           </div>
         ) : null}
-        <div style={{ padding: 26 }}>{children}</div>
+
+        <div className="p-6">{children}</div>
       </main>
     </div>
   );
@@ -138,4 +104,3 @@ async function getFreshness(tenantId: string): Promise<string> {
     return `Ingested ${at.toISOString().slice(0, 16).replace("T", " ")} UTC`;
   });
 }
-

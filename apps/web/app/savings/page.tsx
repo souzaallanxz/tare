@@ -2,7 +2,10 @@ import { withTenant } from "@tare/db";
 import { listRecommendations, savingsSummary } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
 import { Money } from "../../components/money";
+import { PageHeader } from "../../components/page-header";
 import { BasisPill, StatePill } from "../../components/pills";
+import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../components/ui/card";
+import { Kpi, KpiGrid } from "../../components/ui/kpi";
 import { requireSession } from "../../lib/session";
 import { SweepButton, TransitionButton } from "./action-buttons";
 import type { RecommendationState } from "@tare/core";
@@ -22,48 +25,45 @@ export default async function SavingsPage() {
 
   return (
     <AppShell active="savings" session={session}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="display">Savings</h1>
-          <p className="mut" style={{ margin: "6px 0 0" }}>
-            A recommendation is a suggestion. A saving is a fact with a date.
-          </p>
-        </div>
-        <SweepButton />
-      </div>
+      <PageHeader
+        title="Savings"
+        description="A recommendation is a suggestion. A saving is a fact with a date."
+        actions={<SweepButton />}
+      />
 
-      <div className="kpis" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
-        <div className="kpi">
-          <span className="label">Confirmed, lifetime</span>
-          <div className="v rec">
-            €{(summary.lifetimeMinor / 100).toLocaleString("en-IE", { maximumFractionDigits: 0 })}
-          </div>
-          <span className="n">Verified against billed cost</span>
-        </div>
-        <div className="kpi">
-          <span className="label">In verification</span>
-          <div className="v est"><Money amount={verifyingMinor} basis="estimated" currency={currency} /></div>
-          <span className="n">
-            {summary.verifyingCount} recommendation{summary.verifyingCount === 1 ? "" : "s"} · 28-day window
-          </span>
-        </div>
-        <div className="kpi">
-          <span className="label">Not observed</span>
-          <div className="v ovr">{summary.notObservedCount}</div>
-          <span className="n">Applied, but no measurable fall</span>
-        </div>
-      </div>
+      <KpiGrid cols={3}>
+        <Kpi
+          tone="recovered"
+          label="Confirmed, lifetime"
+          value={`€${(summary.lifetimeMinor / 100).toLocaleString("en-IE", { maximumFractionDigits: 0 })}`}
+          hint="Verified against billed cost"
+        />
+        <Kpi
+          tone="estimated"
+          label="In verification"
+          value={<Money amount={verifyingMinor} basis="estimated" currency={currency} />}
+          hint={`${summary.verifyingCount} recommendation${summary.verifyingCount === 1 ? "" : "s"} · 28-day window`}
+        />
+        <Kpi
+          tone="overrun"
+          label="Not observed"
+          value={String(summary.notObservedCount)}
+          hint="Applied, but no measurable fall"
+        />
+      </KpiGrid>
 
       {recs.length === 0 ? (
-        <section className="panel">
-          <div className="pad mut">
+        <Card>
+          <CardBody className="text-muted">
             No recommendations yet. Run an ingestion from the Connection page — findings will land here.
-          </div>
-        </section>
+          </CardBody>
+        </Card>
       ) : (
-        recs.map((r) => (
-          <RecommendationCard key={r.id} rec={r} currency={currency} />
-        ))
+        <div className="space-y-6">
+          {recs.map((r) => (
+            <RecommendationCard key={r.id} rec={r} currency={currency} />
+          ))}
+        </div>
       )}
     </AppShell>
   );
@@ -82,52 +82,43 @@ function RecommendationCard({
     rec.state === "confirmed" ? "down" : rec.rule === "cost_break" ? "up" : "neutral";
 
   return (
-    <section className="panel">
-      <header>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-          <span className="data mut">{rec.id.slice(0, 8)}</span>
-          <span className="title">{humanRule(rec.rule)}</span>
-          <span className="label">{rec.entityName ?? "workspace"}</span>
+    <Card>
+      <CardHeader>
+        <div className="flex flex-wrap items-baseline gap-2.5">
+          <span className="font-mono text-[13px] text-muted">{rec.id.slice(0, 8)}</span>
+          <CardTitle>{humanRule(rec.rule)}</CardTitle>
+          <CardHint>{rec.entityName ?? "workspace"}</CardHint>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="flex items-center gap-2">
           <StatePill state={rec.state} />
           {rec.impactBasis ? <BasisPill basis={rec.impactBasis} /> : null}
           <TransitionButton id={rec.id} state={rec.state} />
         </div>
-      </header>
-      <div className="pad">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 26, flexWrap: "wrap" }}>
-          <p className="mut" style={{ maxWidth: "66ch", margin: 0 }}>{rec.explanation}</p>
-          <div style={{ textAlign: "right" }}>
-            <div className="label">{heading}</div>
-            <div style={{ fontSize: 22, marginTop: 4 }}>
-              <Money amount={rec.impactMinor} basis={rec.impactBasis ?? "billed"} tone={tone} currency={currency} />
+      </CardHeader>
+      <CardBody>
+        <div className="flex flex-wrap justify-between gap-6">
+          <p className="text-muted max-w-[66ch] m-0">{rec.explanation}</p>
+          <div className="text-right">
+            <div className="font-mono text-[11px] uppercase tracking-[.12em] text-muted">{heading}</div>
+            <div className="text-[22px] mt-1">
+              <Money
+                amount={rec.impactMinor}
+                basis={rec.impactBasis ?? "billed"}
+                tone={tone}
+                currency={currency}
+              />
             </div>
           </div>
         </div>
-        <div
-          style={{
-            marginTop: 16,
-            paddingTop: 14,
-            borderTop: "1px solid var(--color-rule)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            letterSpacing: ".06em",
-            textTransform: "uppercase",
-            color: "var(--color-muted)",
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="mt-4 pt-3.5 border-t border-rule font-mono text-[11px] uppercase tracking-[.06em] text-muted flex flex-wrap gap-3">
           <Chain state={rec.state} />
-          <span className="mut" style={{ marginLeft: "auto", textTransform: "none", letterSpacing: 0 }}>
+          <span className="ml-auto text-muted normal-case tracking-normal">
             opened {new Date(rec.openedAt).toISOString().slice(0, 10)}
             {rec.appliedAt ? ` · applied ${new Date(rec.appliedAt).toISOString().slice(0, 10)}` : ""}
           </span>
         </div>
-      </div>
-    </section>
+      </CardBody>
+    </Card>
   );
 }
 
@@ -135,24 +126,22 @@ function Chain({ state }: { state: RecommendationState }) {
   if (state === "not_observed") {
     const done = ["open", "accepted", "applied", "verifying"];
     return (
-      <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+      <span className="inline-flex flex-wrap gap-2">
         {done.map((s) => (
-          <span key={s} style={{ color: "var(--color-ink)" }}>{s}</span>
+          <span key={s} className="text-ink">{s}</span>
         ))}
-        <span style={{ color: "var(--color-overrun)", borderBottom: "1px solid currentColor" }}>not observed</span>
+        <span className="text-overrun border-b border-current">not observed</span>
       </span>
     );
   }
   const i = SEQUENCE.indexOf(state);
   return (
-    <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+    <span className="inline-flex flex-wrap gap-2">
       {SEQUENCE.map((s, j) => (
         <span
           key={s}
-          style={{
-            color: j <= i ? "var(--color-ink)" : "var(--color-muted)",
-            borderBottom: j === i ? "1px solid currentColor" : undefined,
-          }}
+          className={j <= i ? "text-ink" : "text-muted"}
+          style={j === i ? { borderBottom: "1px solid currentColor" } : undefined}
         >
           {s}
         </span>

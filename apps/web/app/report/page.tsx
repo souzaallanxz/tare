@@ -1,6 +1,9 @@
 import { withTenant } from "@tare/db";
 import { listReportRecipients } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
+import { PageHeader } from "../../components/page-header";
+import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../components/ui/card";
+import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { requireSession } from "../../lib/session";
 import { renderWeeklyReportFor } from "../../lib/weekly-report";
 import { AddRecipientForm, RemoveRecipientButton, SendButtons } from "./controls";
@@ -14,57 +17,56 @@ export default async function ReportPage() {
 
   return (
     <AppShell active="report" session={session}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="display">Weekly report</h1>
-          <p className="mut" style={{ margin: "6px 0 0" }}>
-            640 px, table layout, no web fonts. Survives Outlook.
-          </p>
-        </div>
-        <SendButtons />
-      </div>
+      <PageHeader
+        title="Weekly report"
+        description="640 px, table layout, no web fonts. Survives Outlook."
+        actions={<SendButtons />}
+      />
 
-      <section className="panel">
-        <header>
-          <span className="title">Recipients</span>
-          <span className="label">Emailed every Monday 07:00 CET</span>
-        </header>
-        <div className="pad" style={{ borderBottom: "1px solid var(--color-rule)" }}>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Recipients</CardTitle>
+          <CardHint>Emailed every Monday 07:00 CET</CardHint>
+        </CardHeader>
+        <CardBody className="border-b border-rule">
           <AddRecipientForm />
-        </div>
+        </CardBody>
         {recipients.length === 0 ? (
-          <div className="pad mut">
+          <CardBody className="text-muted">
             No recipients yet. Test sends still go to your own address.
-          </div>
+          </CardBody>
         ) : (
-          <table>
-            <thead>
-              <tr><th>Email</th><th>Name</th><th className="n"></th></tr>
-            </thead>
-            <tbody>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Email</TH>
+                <TH>Name</TH>
+                <TH className="text-right" />
+              </TR>
+            </THead>
+            <TBody>
               {recipients.map((r) => (
-                <tr key={r.id}>
-                  <td className="data">{r.email}</td>
-                  <td>{r.name ?? <span className="mut">—</span>}</td>
-                  <td className="n"><RemoveRecipientButton id={r.id} /></td>
-                </tr>
+                <TR key={r.id}>
+                  <TD className="font-mono">{r.email}</TD>
+                  <TD>{r.name ?? <span className="text-muted">—</span>}</TD>
+                  <TD className="text-right"><RemoveRecipientButton id={r.id} /></TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
-      </section>
+      </Card>
 
-      <section className="panel">
-        <header>
-          <span className="title">Preview</span>
-          <span className="label">What lands in the inbox</span>
-        </header>
+      <Card>
+        <CardHeader>
+          <CardTitle>Preview</CardTitle>
+          <CardHint>What lands in the inbox</CardHint>
+        </CardHeader>
         <div
-          className="pad"
-          style={{ background: "var(--color-paper)" }}
+          className="p-4 bg-paper"
           dangerouslySetInnerHTML={{ __html: html }}
         />
-      </section>
+      </Card>
     </AppShell>
   );
 }

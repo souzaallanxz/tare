@@ -5,7 +5,12 @@ import { listOwners } from "@tare/db/repositories";
 import { AppShell } from "../../../components/shell";
 import { DailyChart } from "../../../components/daily-chart";
 import { Money } from "../../../components/money";
-import { BasisPill, Pill, StatePill } from "../../../components/pills";
+import { PageHeader } from "../../../components/page-header";
+import { BasisPill, StatePill } from "../../../components/pills";
+import { Badge } from "../../../components/ui/badge";
+import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../../components/ui/card";
+import { Kpi, KpiGrid } from "../../../components/ui/kpi";
+import { Table, TBody, TD, TH, THead, TR } from "../../../components/ui/table";
 import { requireSession } from "../../../lib/session";
 import { getWorkloadByExternalId } from "../../../lib/workload-data";
 import { AssignOwnerButton } from "./assign-owner";
@@ -24,7 +29,6 @@ export default async function WorkloadPage({ params }: { params: Promise<{ name:
   const { entity, config, daily, totalMinor, currency, findings, workspaceTotalMinor } = data;
   const share = workspaceTotalMinor > 0 ? (totalMinor / workspaceTotalMinor) * 100 : 0;
 
-  // Fill sparse daily series to a contiguous window for the chart.
   const days = 30;
   const today = new Date();
   const buckets = Array.from({ length: days }, (_, i) => {
@@ -41,160 +45,170 @@ export default async function WorkloadPage({ params }: { params: Promise<{ name:
 
   return (
     <AppShell active="ledger" session={session}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
-        <div>
-          <p className="mut" style={{ fontSize: 13, margin: "0 0 6px" }}>
-            <Link href="/ledger">Ledger</Link> / {entity.kind}
-          </p>
-          <h1 className="display">{entity.name}</h1>
-          <p className="mut" style={{ margin: "6px 0 0" }}>
-            {entity.ownerName
-              ? `Owner: ${entity.ownerName}${entity.ownerSource ? ` · resolved from ${entity.ownerSource}` : ""}`
-              : "No owner resolved: no tag, no run_as, no creator."}
-          </p>
-        </div>
-        <AssignOwnerButton
-          entityId={entity.id}
-          owners={owners.map((o) => ({ id: o.id, name: o.name, kind: o.kind }))}
-          currentOwnerName={entity.ownerName}
-          currentSource={entity.ownerSource}
+      <PageHeader
+        eyebrow={<><Link href="/ledger" className="hover:underline">Ledger</Link> / {entity.kind}</>}
+        title={entity.name}
+        description={
+          entity.ownerName
+            ? `Owner: ${entity.ownerName}${entity.ownerSource ? ` · resolved from ${entity.ownerSource}` : ""}`
+            : "No owner resolved: no tag, no run_as, no creator."
+        }
+        actions={
+          <AssignOwnerButton
+            entityId={entity.id}
+            owners={owners.map((o) => ({ id: o.id, name: o.name, kind: o.kind }))}
+            currentOwnerName={entity.ownerName}
+            currentSource={entity.ownerSource}
+          />
+        }
+      />
+
+      <KpiGrid cols={3}>
+        <Kpi
+          label="Last 30 days"
+          value={<Money amount={totalMinor} basis="billed" currency={currency} />}
+          hint={`${share.toFixed(1)}% of workspace spend`}
         />
-      </div>
+        <Kpi
+          label="First seen"
+          value={<span className="text-[20px]">{entity.firstSeen}</span>}
+          hint={`last ${entity.lastSeen}`}
+        />
+        <Kpi
+          label="Open findings"
+          value={String(openFindings.length)}
+          hint={`${findings.length - openFindings.length} closed`}
+        />
+      </KpiGrid>
 
-      <div className="kpis" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
-        <div className="kpi">
-          <span className="label">Last 30 days</span>
-          <div className="v">
-            <Money amount={totalMinor} basis="billed" currency={currency} />
-          </div>
-          <span className="n">{share.toFixed(1)}% of workspace spend</span>
-        </div>
-        <div className="kpi">
-          <span className="label">First seen</span>
-          <div className="v" style={{ fontSize: 20 }}>{entity.firstSeen}</div>
-          <span className="n">last {entity.lastSeen}</span>
-        </div>
-        <div className="kpi">
-          <span className="label">Open findings</span>
-          <div className="v">{openFindings.length}</div>
-          <span className="n">{findings.length - openFindings.length} closed</span>
-        </div>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-6 items-start">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily cost</CardTitle>
+              <CardHint>30 days</CardHint>
+            </CardHeader>
+            <CardBody>
+              <DailyChart
+                dailyMinor={buckets}
+                billedDays={billedCut}
+                height={140}
+                currency={currency}
+              />
+            </CardBody>
+          </Card>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.55fr 1fr", gap: 24, alignItems: "start" }}>
-        <div>
-          <section className="panel">
-            <header><span className="title">Daily cost</span><span className="label">30 days</span></header>
-            <div className="pad">
-              <DailyChart dailyMinor={buckets} billedDays={billedCut} height={140} />
-            </div>
-          </section>
-
-          <section className="panel">
-            <header>
-              <span className="title">Findings</span>
-              <span className="label">{findings.length} total</span>
-            </header>
+          <Card>
+            <CardHeader>
+              <CardTitle>Findings</CardTitle>
+              <CardHint>{findings.length} total</CardHint>
+            </CardHeader>
             {findings.length === 0 ? (
-              <div className="pad mut">
+              <CardBody className="text-muted">
                 No rules matched this workload in the current window. Six rules ran at the last ingestion.
-              </div>
+              </CardBody>
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Rule</th><th>State</th>
-                    <th className="n">Impact</th><th>Basis</th>
-                    <th>Opened</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Rule</TH>
+                    <TH>State</TH>
+                    <TH className="text-right">Impact</TH>
+                    <TH>Basis</TH>
+                    <TH>Opened</TH>
+                  </TR>
+                </THead>
+                <TBody>
                   {findings.map((f) => (
-                    <tr key={f.id}>
-                      <td>{humanRule(f.rule)}</td>
-                      <td><StatePill state={f.state as RecommendationState} /></td>
-                      <td className="n">
+                    <TR key={f.id}>
+                      <TD>{humanRule(f.rule)}</TD>
+                      <TD><StatePill state={f.state as RecommendationState} /></TD>
+                      <TD className="text-right">
                         <Money
                           amount={f.impactMinor}
                           basis={f.impactBasis ?? "billed"}
                           currency={f.currency as "EUR" | "USD"}
                         />
-                      </td>
-                      <td>{f.impactBasis ? <BasisPill basis={f.impactBasis} /> : "—"}</td>
-                      <td className="data mut">{f.openedAt.slice(0, 10)}</td>
-                    </tr>
+                      </TD>
+                      <TD>{f.impactBasis ? <BasisPill basis={f.impactBasis} /> : "—"}</TD>
+                      <TD className="font-mono text-muted">{f.openedAt.slice(0, 10)}</TD>
+                    </TR>
                   ))}
-                </tbody>
-              </table>
+                </TBody>
+              </Table>
             )}
-          </section>
+          </Card>
         </div>
 
-        <div>
-          <section className="panel">
-            <header>
-              <span className="title">Configuration</span>
-              <span className="label">{config ? `snapshot ${config.observedOn}` : "no snapshot"}</span>
-            </header>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuration</CardTitle>
+              <CardHint>{config ? `snapshot ${config.observedOn}` : "no snapshot"}</CardHint>
+            </CardHeader>
             {config ? (
-              <div style={{ display: "grid", gridTemplateColumns: "160px 1fr" }}>
-                {(
-                  [
-                    ["Node type", config.nodeType ?? "—"],
-                    ["Workers", config.minWorkers != null || config.maxWorkers != null
-                      ? `${config.minWorkers ?? "—"} → ${config.maxWorkers ?? "—"}`
-                      : "—"],
-                    ["Autotermination", config.autoterminationMinutes != null
-                      ? `${config.autoterminationMinutes} min`
-                      : "none"],
-                    ["Runtime", config.runtimeVersion ?? "—"],
-                    ["Tags", Object.keys(config.tags).length
-                      ? Object.entries(config.tags).map(([k, v]) => `${k}=${v}`).join(", ")
-                      : "—"],
-                  ] as const
-                ).map(([k, v], i, a) => {
-                  const border = i === a.length - 1 ? undefined : "1px solid var(--color-rule)";
-                  return (
-                    <div key={k} style={{ display: "contents" }}>
-                      <div className="label" style={{ padding: "10px 16px", paddingTop: 13, borderBottom: border }}>{k}</div>
-                      <div className="data" style={{ padding: "10px 16px", borderBottom: border }}>{v}</div>
-                    </div>
-                  );
-                })}
-              </div>
+              <Kv rows={[
+                ["Node type", config.nodeType ?? "—"],
+                ["Workers", config.minWorkers != null || config.maxWorkers != null
+                  ? `${config.minWorkers ?? "—"} → ${config.maxWorkers ?? "—"}`
+                  : "—"],
+                ["Autotermination", config.autoterminationMinutes != null
+                  ? `${config.autoterminationMinutes} min`
+                  : "none"],
+                ["Runtime", config.runtimeVersion ?? "—"],
+                ["Tags", Object.keys(config.tags).length
+                  ? Object.entries(config.tags).map(([k, v]) => `${k}=${v}`).join(", ")
+                  : "—"],
+              ]} />
             ) : (
-              <div className="pad mut">
+              <CardBody className="text-muted">
                 No config observed yet. Cluster snapshots land during ingestion; jobs have no equivalent.
-              </div>
+              </CardBody>
             )}
-          </section>
+          </Card>
 
-          <section className="panel">
-            <header><span className="title">Identity</span></header>
-            <div style={{ display: "grid", gridTemplateColumns: "160px 1fr" }}>
-              {([
-                ["Kind", entity.kind],
-                ["External id", entity.externalId],
-                ["Owner", entity.ownerName ?? "unattributed"],
-                ["Source", entity.ownerSource ?? "—"],
-              ] as const).map(([k, v], i, a) => {
-                const border = i === a.length - 1 ? undefined : "1px solid var(--color-rule)";
-                return (
-                  <div key={k} style={{ display: "contents" }}>
-                    <div className="label" style={{ padding: "10px 16px", paddingTop: 13, borderBottom: border }}>{k}</div>
-                    <div className="data" style={{ padding: "10px 16px", borderBottom: border }}>
-                      {k === "Owner" && !entity.ownerName ? (
-                        <Pill variant="ovr">unattributed</Pill>
-                      ) : v}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+          <Card>
+            <CardHeader>
+              <CardTitle>Identity</CardTitle>
+            </CardHeader>
+            <Kv rows={[
+              ["Kind", entity.kind],
+              ["External id", entity.externalId],
+              ["Owner", entity.ownerName ?? "unattributed"],
+              ["Source", entity.ownerSource ?? "—"],
+            ]}
+            highlightUnattributed={!entity.ownerName} />
+          </Card>
         </div>
       </div>
     </AppShell>
+  );
+}
+
+function Kv({
+  rows,
+  highlightUnattributed,
+}: {
+  rows: readonly [string, string][];
+  highlightUnattributed?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[160px_1fr]">
+      {rows.map(([k, v], i, a) => {
+        const border = i === a.length - 1 ? "" : "border-b border-rule";
+        const emphUnattr = highlightUnattributed && k === "Owner" && v === "unattributed";
+        return (
+          <div key={k} className="contents">
+            <div className={`px-4 py-2.5 pt-3 font-mono text-[11px] uppercase tracking-[.12em] text-muted ${border}`}>
+              {k}
+            </div>
+            <div className={`px-4 py-2.5 font-mono text-[13px] tabular-nums ${border}`}>
+              {emphUnattr ? <Badge variant="overrun">unattributed</Badge> : v}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

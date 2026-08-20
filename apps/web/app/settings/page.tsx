@@ -7,7 +7,10 @@ import {
   listRateCard,
 } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
-import { Pill } from "../../components/pills";
+import { PageHeader } from "../../components/page-header";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../components/ui/card";
+import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { requireSession } from "../../lib/session";
 import { InviteForm } from "./invite-form";
 import { RemoveInviteButton, RemoveMemberButton } from "./row-actions";
@@ -28,33 +31,32 @@ export default async function SettingsPage() {
 
   return (
     <AppShell active="settings" session={session}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="display">Settings</h1>
-          <p className="mut" style={{ margin: "6px 0 0" }}>Rates, budgets, residency, people.</p>
-        </div>
-      </div>
+      <PageHeader title="Settings" description="Rates, budgets, residency, people." />
 
-      <section
-        className="panel"
-        style={{ borderLeft: `2px solid ${rateCard.length === 0 ? "var(--color-estimated)" : "var(--color-recovered)"}` }}
+      <Card
+        className={
+          "mb-6 border-l-2 " +
+          (rateCard.length === 0 ? "border-l-estimated" : "border-l-recovered")
+        }
       >
-        <header>
-          <span className="title">Rate card</span>
+        <CardHeader>
+          <CardTitle>Rate card</CardTitle>
           {rateCard.length === 0 ? (
-            <Pill variant="est">absent · list price in use</Pill>
+            <Badge variant="estimated">absent · list price in use</Badge>
           ) : (
-            <Pill variant="rec">{rateCard.length} row{rateCard.length === 1 ? "" : "s"} · billed</Pill>
+            <Badge variant="recovered">
+              {rateCard.length} row{rateCard.length === 1 ? "" : "s"} · billed
+            </Badge>
           )}
-        </header>
+        </CardHeader>
         <RateCardPanel entries={rateCard} currency={session.activeTenant.currency} />
-      </section>
+      </Card>
 
-      <section className="panel">
-        <header>
-          <span className="title">Budgets and thresholds</span>
-          <span className="label">Currency: {session.activeTenant.currency}</span>
-        </header>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Budgets and thresholds</CardTitle>
+          <CardHint>Currency: {session.activeTenant.currency}</CardHint>
+        </CardHeader>
         <BudgetSection
           budgets={budgets.map((b) => ({
             id: b.id,
@@ -68,87 +70,88 @@ export default async function SettingsPage() {
           owners={owners.map((o) => ({ id: o.id, name: o.name }))}
           currency={session.activeTenant.currency}
         />
-      </section>
+      </Card>
 
-      <section className="panel">
-        <header>
-          <span className="title">People</span>
-        </header>
-        <div className="pad" style={{ borderBottom: "1px solid var(--color-rule)" }}>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>People</CardTitle>
+        </CardHeader>
+        <CardBody className="border-b border-rule">
           <InviteForm />
-        </div>
-        <table>
-          <thead>
-            <tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr>
-          </thead>
-          <tbody>
+        </CardBody>
+        <Table>
+          <THead>
+            <TR>
+              <TH>Name</TH>
+              <TH>Email</TH>
+              <TH>Role</TH>
+              <TH className="text-right" />
+            </TR>
+          </THead>
+          <TBody>
             {members.map((m) => (
-              <tr key={m.userId}>
-                <td>{m.name || <span className="mut">—</span>}</td>
-                <td className="data mut">{m.email}</td>
-                <td style={{ textTransform: "capitalize" }}>{m.role}</td>
-                <td className="n">
+              <TR key={m.userId}>
+                <TD>{m.name || <span className="text-muted">—</span>}</TD>
+                <TD className="font-mono text-muted">{m.email}</TD>
+                <TD className="capitalize">{m.role}</TD>
+                <TD className="text-right">
                   {m.userId === session.user.id ? (
-                    <span className="mut" style={{ fontSize: 12 }}>you</span>
+                    <span className="text-muted text-[12px]">you</span>
                   ) : m.role === "owner" ? (
-                    <span className="mut" style={{ fontSize: 12 }}>—</span>
+                    <span className="text-muted text-[12px]">—</span>
                   ) : (
                     <RemoveMemberButton userId={m.userId} />
                   )}
-                </td>
-              </tr>
+                </TD>
+              </TR>
             ))}
-          </tbody>
-        </table>
-      </section>
+          </TBody>
+        </Table>
+      </Card>
 
       {invitations.length > 0 && (
-        <section className="panel">
-          <header>
-            <span className="title">Pending invitations</span>
-            <span className="label">Expire 72 hours after sending</span>
-          </header>
-          <table>
-            <thead>
-              <tr><th>Email</th><th>Role</th><th>Expires</th><th></th></tr>
-            </thead>
-            <tbody>
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Pending invitations</CardTitle>
+            <CardHint>Expire 72 hours after sending</CardHint>
+          </CardHeader>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Email</TH>
+                <TH>Role</TH>
+                <TH>Expires</TH>
+                <TH className="text-right" />
+              </TR>
+            </THead>
+            <TBody>
               {invitations.map((inv) => (
-                <tr key={inv.id}>
-                  <td className="data">{inv.email}</td>
-                  <td style={{ textTransform: "capitalize" }}>{inv.role}</td>
-                  <td className="data mut">{formatDate(inv.expiresAt)}</td>
-                  <td className="n"><RemoveInviteButton id={inv.id} /></td>
-                </tr>
+                <TR key={inv.id}>
+                  <TD className="font-mono">{inv.email}</TD>
+                  <TD className="capitalize">{inv.role}</TD>
+                  <TD className="font-mono text-muted">{formatDate(inv.expiresAt)}</TD>
+                  <TD className="text-right"><RemoveInviteButton id={inv.id} /></TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
-        </section>
+            </TBody>
+          </Table>
+        </Card>
       )}
 
-      <section className="panel" style={{ borderLeft: "2px solid var(--color-overrun)" }}>
-        <header><span className="title">End access</span></header>
-        <div className="pad">
-          <p className="mut" style={{ maxWidth: "72ch", margin: "0 0 12px" }}>
+      <Card className="border-l-2 border-l-overrun">
+        <CardHeader>
+          <CardTitle>End access</CardTitle>
+        </CardHeader>
+        <CardBody>
+          <p className="text-muted max-w-[72ch] mb-3">
             One statement in your workspace ends all access immediately. Tare keeps the aggregates already
             ingested until you delete the tenant.
           </p>
-          <pre
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 12.5,
-              background: "var(--color-ink)",
-              color: "#C6CEDA",
-              padding: "18px 20px",
-              margin: 0,
-              overflowX: "auto",
-              whiteSpace: "pre",
-            }}
-          >
+          <pre className="font-mono text-[12.5px] bg-ink text-[#C6CEDA] px-5 py-4 m-0 overflow-x-auto whitespace-pre">
             {REVOKE}
           </pre>
-        </div>
-      </section>
+        </CardBody>
+      </Card>
     </AppShell>
   );
 }

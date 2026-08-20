@@ -1,18 +1,23 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Button } from "../../components/ui/button";
+import { Input, Label } from "../../components/ui/input";
 import { addAttributionRuleAction } from "./actions";
 
 type MatcherType = "tag" | "run_as_domain" | "run_as_equals" | "creator" | "warehouse_id";
 
+const selectCls =
+  "h-9 px-2.5 border border-rule bg-surface text-ink font-mono text-[12.5px] hover:border-ink " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink w-full";
+
 export function AddRuleForm() {
   const [type, setType] = useState<MatcherType>("tag");
   const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
     const fd = new FormData(e.currentTarget);
     const ownerName = String(fd.get("ownerName") ?? "");
     const ownerKind = String(fd.get("ownerKind") ?? "team") as "team" | "person";
@@ -36,29 +41,41 @@ export function AddRuleForm() {
         break;
     }
 
+    const target = e.currentTarget;
     start(async () => {
       const res = await addAttributionRuleAction({ ownerName, ownerKind, matcher });
-      if (!res.ok) setError(res.error);
-      else (e.target as HTMLFormElement).reset();
+      if (!res.ok) toast.error(res.error);
+      else {
+        toast.success("Rule added.");
+        target.reset();
+      }
     });
   }
 
   return (
-    <form onSubmit={onSubmit} style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(4, 1fr) auto", alignItems: "end" }}>
+    <form
+      onSubmit={onSubmit}
+      className="grid gap-2.5 md:grid-cols-[repeat(4,minmax(0,1fr))_auto] items-end"
+    >
       <div>
-        <label className="label" htmlFor="ownerName">Owner name</label>
-        <input id="ownerName" name="ownerName" required style={ip} placeholder="Data Platform" />
+        <Label htmlFor="ownerName">Owner name</Label>
+        <Input id="ownerName" name="ownerName" required placeholder="Data Platform" />
       </div>
       <div>
-        <label className="label" htmlFor="ownerKind">Kind</label>
-        <select id="ownerKind" name="ownerKind" defaultValue="team" style={ip}>
+        <Label htmlFor="ownerKind">Kind</Label>
+        <select id="ownerKind" name="ownerKind" defaultValue="team" className={selectCls}>
           <option value="team">team</option>
           <option value="person">person</option>
         </select>
       </div>
       <div>
-        <label className="label" htmlFor="type">Match on</label>
-        <select id="type" value={type} onChange={(e) => setType(e.target.value as MatcherType)} style={ip}>
+        <Label htmlFor="type">Match on</Label>
+        <select
+          id="type"
+          value={type}
+          onChange={(e) => setType(e.target.value as MatcherType)}
+          className={selectCls}
+        >
           <option value="tag">tag</option>
           <option value="run_as_domain">run_as domain</option>
           <option value="run_as_equals">run_as equals</option>
@@ -67,15 +84,12 @@ export function AddRuleForm() {
         </select>
       </div>
       <div>
-        <label className="label">Value</label>
+        <Label>Value</Label>
         <MatcherFields type={type} />
       </div>
-      <button className="btn s" type="submit" disabled={pending}>
+      <Button size="sm" type="submit" disabled={pending}>
         {pending ? "Adding…" : "Add rule"}
-      </button>
-      {error ? (
-        <p style={{ gridColumn: "1 / -1", color: "var(--color-overrun)", fontSize: 13, margin: 0 }}>{error}</p>
-      ) : null}
+      </Button>
     </form>
   );
 }
@@ -84,27 +98,18 @@ function MatcherFields({ type }: { type: MatcherType }) {
   switch (type) {
     case "tag":
       return (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-          <input name="key" placeholder="team" required style={ip} />
-          <input name="value" placeholder="platform" required style={ip} />
+        <div className="grid grid-cols-2 gap-1.5">
+          <Input name="key" placeholder="team" required />
+          <Input name="value" placeholder="platform" required />
         </div>
       );
     case "run_as_domain":
-      return <input name="domain" placeholder="analytics.acme.example" required style={ip} />;
+      return <Input name="domain" placeholder="analytics.acme.example" required />;
     case "run_as_equals":
-      return <input name="email" placeholder="pipeline@acme.example" required style={ip} />;
+      return <Input name="email" placeholder="pipeline@acme.example" required />;
     case "creator":
-      return <input name="user" placeholder="m.silva" required style={ip} />;
+      return <Input name="user" placeholder="m.silva" required />;
     case "warehouse_id":
-      return <input name="id" placeholder="8f2c1a…" required style={ip} />;
+      return <Input name="id" placeholder="8f2c1a…" required />;
   }
 }
-
-const ip: React.CSSProperties = {
-  width: "100%",
-  padding: "8px 10px",
-  border: "1px solid var(--color-rule)",
-  background: "var(--color-surface)",
-  fontFamily: "var(--font-mono)",
-  fontSize: 12.5,
-};

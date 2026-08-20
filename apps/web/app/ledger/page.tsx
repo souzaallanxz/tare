@@ -3,6 +3,9 @@ import { withTenant } from "@tare/db";
 import { listOwners, type Owner } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
 import { LedgerTable, type LedgerRow } from "../../components/ledger-table";
+import { PageHeader } from "../../components/page-header";
+import { Button } from "../../components/ui/button";
+import { Card, CardHeader } from "../../components/ui/card";
 import { requireSession } from "../../lib/session";
 import type { Basis, EntityKind } from "@tare/core";
 
@@ -13,7 +16,7 @@ type Search = Record<string, string | string[] | undefined>;
 export default async function LedgerPage({ searchParams }: { searchParams: Promise<Search> }) {
   const session = await requireSession();
   const sp = await searchParams;
-  const ownerFilter = str(sp["owner"]);          // owner id, "unattr", or ""
+  const ownerFilter = str(sp["owner"]);
   const kindFilter = str(sp["kind"]) as EntityKind | "";
   const basisFilter = (str(sp["basis"]) || "") as Basis | "";
   const days = Math.min(90, Math.max(1, Number(str(sp["days"]) || "14")));
@@ -70,26 +73,22 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
 
   return (
     <AppShell active="ledger" session={session}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="display">Ledger</h1>
-          <p className="mut" style={{ margin: "6px 0 0" }}>
-            {total.toLocaleString("en-IE")} rows in the last {days} days.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Ledger"
+        description={`${total.toLocaleString("en-IE")} rows in the last ${days} days.`}
+      />
 
-      <section className="panel">
-        <header>
+      <Card>
+        <CardHeader>
           <FilterForm
             owners={owners}
             values={{ owner: ownerFilter, kind: kindFilter, basis: basisFilter, days: String(days) }}
           />
-        </header>
+        </CardHeader>
 
         <LedgerTable rows={rowsForClient(rows)} />
         {rows.length > 0 && <Pagination page={page} pageSize={PAGE_SIZE} total={total} search={sp} />}
-      </section>
+      </Card>
     </AppShell>
   );
 }
@@ -128,6 +127,10 @@ type LedgerRowServer = {
   owner_name: string | null;
 };
 
+const selectCls =
+  "h-8 px-2.5 border border-rule bg-surface text-ink font-mono text-[12px] hover:border-ink " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink";
+
 function FilterForm({
   owners,
   values,
@@ -136,15 +139,15 @@ function FilterForm({
   values: { owner: string; kind: string; basis: string; days: string };
 }) {
   return (
-    <form action="/ledger" method="GET" style={{ display: "flex", gap: 8, flexWrap: "wrap", width: "100%" }}>
-      <select name="owner" defaultValue={values.owner} style={selectStyle}>
+    <form action="/ledger" method="GET" className="flex flex-wrap gap-2 w-full items-center">
+      <select name="owner" defaultValue={values.owner} className={selectCls}>
         <option value="">Owner: all</option>
         <option value="unattr">Unattributed</option>
         {owners.map((o) => (
           <option key={o.id} value={o.id}>{o.name}</option>
         ))}
       </select>
-      <select name="kind" defaultValue={values.kind} style={selectStyle}>
+      <select name="kind" defaultValue={values.kind} className={selectCls}>
         <option value="">Kind: all</option>
         <option value="job">job</option>
         <option value="cluster">cluster</option>
@@ -152,18 +155,18 @@ function FilterForm({
         <option value="pipeline">pipeline</option>
         <option value="notebook">notebook</option>
       </select>
-      <select name="basis" defaultValue={values.basis} style={selectStyle}>
+      <select name="basis" defaultValue={values.basis} className={selectCls}>
         <option value="">Basis: all</option>
         <option value="billed">billed</option>
         <option value="estimated">estimated</option>
       </select>
-      <select name="days" defaultValue={values.days} style={selectStyle}>
+      <select name="days" defaultValue={values.days} className={selectCls}>
         <option value="7">Last 7 days</option>
         <option value="14">Last 14 days</option>
         <option value="30">Last 30 days</option>
         <option value="90">Last 90 days</option>
       </select>
-      <button className="btn ghost s" type="submit">Apply</button>
+      <Button type="submit" variant="ghost" size="sm">Apply</Button>
     </form>
   );
 }
@@ -189,26 +192,22 @@ function Pagination({
     return `/ledger?${qp.toString()}`;
   };
   return (
-    <div
-      className="pad"
-      style={{ borderTop: "1px solid var(--color-rule)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}
-    >
-      <span className="mut" style={{ fontSize: 13 }}>
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-rule">
+      <span className="text-muted text-[13px]">
         Showing {page * pageSize + 1}–{Math.min(total, (page + 1) * pageSize)} of {total}
       </span>
-      <span style={{ display: "flex", gap: 8 }}>
-        {page > 0 && <Link className="btn ghost s" href={link(page - 1) as never}>← Previous</Link>}
-        {page < lastPage && <Link className="btn ghost s" href={link(page + 1) as never}>Next →</Link>}
+      <span className="flex gap-2">
+        {page > 0 && (
+          <Button asChild variant="ghost" size="sm">
+            <Link href={link(page - 1) as never}>← Previous</Link>
+          </Button>
+        )}
+        {page < lastPage && (
+          <Button asChild variant="ghost" size="sm">
+            <Link href={link(page + 1) as never}>Next →</Link>
+          </Button>
+        )}
       </span>
     </div>
   );
 }
-
-const selectStyle: React.CSSProperties = {
-  padding: "6px 10px",
-  border: "1px solid var(--color-rule)",
-  background: "var(--color-surface)",
-  fontFamily: "var(--font-mono)",
-  fontSize: 12,
-  color: "var(--color-ink)",
-};

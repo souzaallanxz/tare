@@ -6,7 +6,10 @@ import {
 } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
 import { Money } from "../../components/money";
-import { Pill } from "../../components/pills";
+import { PageHeader } from "../../components/page-header";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../components/ui/card";
+import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { requireSession } from "../../lib/session";
 import { AddRuleForm } from "./add-rule-form";
 import { DeleteRuleButton } from "./delete-rule-button";
@@ -27,103 +30,120 @@ export default async function OwnersPage() {
 
   return (
     <AppShell active="owners" session={session}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="display">Owners</h1>
-          <p className="mut" style={{ margin: "6px 0 0" }}>
-            Attribution resolves in priority order. Whatever no rule matches stays on screen.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Owners"
+        description="Attribution resolves in priority order. Whatever no rule matches stays on screen."
+      />
 
       {spends.length === 0 ? (
-        <section className="panel">
-          <div className="pad mut">No usage data yet — run an ingestion from the Connection page.</div>
-        </section>
+        <Card>
+          <CardBody className="text-muted">
+            No usage data yet — run an ingestion from the Connection page.
+          </CardBody>
+        </Card>
       ) : (
         <>
           {unattr && (
-            <section className="panel" style={{ borderLeft: "2px solid var(--color-overrun)" }}>
-              <div className="pad" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-                <div>
-                  <span className="label">Unattributed spend</span>
-                  <div style={{ fontSize: 26, fontFamily: "var(--font-mono)", fontWeight: 500, marginTop: 6 }}>
-                    {totalMinor > 0 ? ((unattr.spendMinor / totalMinor) * 100).toFixed(1) : "0.0"}% ·{" "}
-                    <Money amount={unattr.spendMinor} basis="billed" />
+            <Card className="border-l-2 border-l-overrun mb-6">
+              <CardBody>
+                <div className="flex flex-wrap items-center justify-between gap-5">
+                  <div>
+                    <div className="font-mono text-[11px] uppercase tracking-[.12em] text-muted">
+                      Unattributed spend
+                    </div>
+                    <div className="font-mono font-medium text-[26px] mt-1.5 tabular-nums">
+                      {totalMinor > 0 ? ((unattr.spendMinor / totalMinor) * 100).toFixed(1) : "0.0"}% ·{" "}
+                      <Money amount={unattr.spendMinor} basis="billed" />
+                    </div>
+                    <p className="text-muted text-[13px] mt-2 max-w-[62ch]">
+                      Entities with no matching attribution rule. Add rules below to close this share.
+                    </p>
                   </div>
-                  <p className="mut" style={{ fontSize: 13, margin: "8px 0 0", maxWidth: "62ch" }}>
-                    Entities with no matching attribution rule. Add rules below to close this share.
-                  </p>
                 </div>
-              </div>
-            </section>
+              </CardBody>
+            </Card>
           )}
 
-          <section className="panel">
-            <header><span className="title">Spend by owner</span><span className="label">Month to date</span></header>
-            <table>
-              <thead>
-                <tr>
-                  <th>Owner</th><th className="n">Entities</th>
-                  <th className="n">Spend</th><th className="n">Share</th>
-                </tr>
-              </thead>
-              <tbody>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Spend by owner</CardTitle>
+              <CardHint>Month to date</CardHint>
+            </CardHeader>
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Owner</TH>
+                  <TH className="text-right">Entities</TH>
+                  <TH className="text-right">Spend</TH>
+                  <TH className="text-right">Share</TH>
+                </TR>
+              </THead>
+              <TBody>
                 {spends.map((o) => (
-                  <tr key={o.ownerId ?? "unattr"}>
-                    <td>
-                      <span style={{ fontWeight: 500, color: o.ownerId === null ? "var(--color-overrun)" : undefined }}>
+                  <TR key={o.ownerId ?? "unattr"}>
+                    <TD>
+                      <span className={o.ownerId === null ? "font-medium text-overrun" : "font-medium"}>
                         {o.name}
                       </span>
-                    </td>
-                    <td className="n data">{o.entities}</td>
-                    <td className="n"><Money amount={o.spendMinor} basis="billed" /></td>
-                    <td className="n data">{totalMinor > 0 ? ((o.spendMinor / totalMinor) * 100).toFixed(1) : "0.0"}%</td>
-                  </tr>
+                    </TD>
+                    <TD className="text-right font-mono tabular-nums">{o.entities}</TD>
+                    <TD className="text-right"><Money amount={o.spendMinor} basis="billed" /></TD>
+                    <TD className="text-right font-mono tabular-nums">
+                      {totalMinor > 0 ? ((o.spendMinor / totalMinor) * 100).toFixed(1) : "0.0"}%
+                    </TD>
+                  </TR>
                 ))}
-              </tbody>
-            </table>
-          </section>
+              </TBody>
+            </Table>
+          </Card>
         </>
       )}
 
-      <section className="panel">
-        <header><span className="title">Attribution rules</span><span className="label">First match wins</span></header>
-        <div className="pad" style={{ borderBottom: "1px solid var(--color-rule)" }}>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Attribution rules</CardTitle>
+          <CardHint>First match wins</CardHint>
+        </CardHeader>
+        <CardBody className="border-b border-rule">
           <AddRuleForm />
-        </div>
+        </CardBody>
         {rules.length === 0 ? (
-          <div className="pad mut">No rules yet. Everything shows as unattributed until you add one.</div>
+          <CardBody className="text-muted">
+            No rules yet. Everything shows as unattributed until you add one.
+          </CardBody>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Priority</th><th>Matcher</th><th>Owner</th><th className="n"></th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Priority</TH>
+                <TH>Matcher</TH>
+                <TH>Owner</TH>
+                <TH className="text-right" />
+              </TR>
+            </THead>
+            <TBody>
               {rules.map((r) => (
-                <tr key={r.id}>
-                  <td className="data mut">{r.priority}</td>
-                  <td className="data">{describeMatcher(r.matcher)}</td>
-                  <td>{r.ownerName}</td>
-                  <td className="n"><DeleteRuleButton id={r.id} /></td>
-                </tr>
+                <TR key={r.id}>
+                  <TD className="font-mono text-muted">{r.priority}</TD>
+                  <TD className="font-mono">{describeMatcher(r.matcher)}</TD>
+                  <TD>{r.ownerName}</TD>
+                  <TD className="text-right"><DeleteRuleButton id={r.id} /></TD>
+                </TR>
               ))}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         )}
-      </section>
+      </Card>
 
-      <section className="panel">
-        <header>
-          <span className="title">Reminder</span>
-          <Pill variant="est">estimated</Pill>
-        </header>
-        <div className="pad mut" style={{ fontSize: 14 }}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Reminder</CardTitle>
+          <Badge variant="estimated">estimated</Badge>
+        </CardHeader>
+        <CardBody className="text-muted text-[14px]">
           The unattributed share is a metric, not a saving. Never rolled into confirmed savings.
-        </div>
-      </section>
+        </CardBody>
+      </Card>
     </AppShell>
   );
 }

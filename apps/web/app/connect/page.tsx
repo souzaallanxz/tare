@@ -1,7 +1,11 @@
 import { withTenant } from "@tare/db";
 import { getConnection, type ConnectionStatus } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
-import { Pill } from "../../components/pills";
+import { Money } from "../../components/money";
+import { PageHeader } from "../../components/page-header";
+import { Badge } from "../../components/ui/badge";
+import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../components/ui/card";
+import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { requireSession } from "../../lib/session";
 import { ConnectForm } from "./connect-form";
 
@@ -17,26 +21,22 @@ export default async function ConnectPage() {
 
   return (
     <AppShell active="connect" session={session}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22, flexWrap: "wrap" }}>
-        <div>
-          <h1 className="display">Connection</h1>
-          <p className="mut" style={{ margin: "6px 0 0" }}>
-            Four steps. Read-only throughout, and revocable in one statement.
-          </p>
-        </div>
-        <StatusPill status={conn?.status ?? null} message={conn?.statusMessage ?? null} />
-      </div>
+      <PageHeader
+        title="Connection"
+        description="Four steps. Read-only throughout, and revocable in one statement."
+        actions={<StatusPill status={conn?.status ?? null} message={conn?.statusMessage ?? null} />}
+      />
 
-      <section className="panel">
-        <header>
-          <span className="title">1 · Save the service principal</span>
-          <span className="label">Secret is envelope-encrypted before it hits the database</span>
-        </header>
-        <div className="pad">
-          <p className="mut" style={{ margin: "0 0 14px", maxWidth: "72ch" }}>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>1 · Save the service principal</CardTitle>
+          <CardHint>Secret is envelope-encrypted before it hits the database</CardHint>
+        </CardHeader>
+        <CardBody>
+          <p className="text-muted mb-3.5 max-w-[72ch]">
             Create an OAuth machine-to-machine service principal named{" "}
-            <span className="data">tare-service-principal</span>, generate a secret, and paste it here.
-            The secret is sealed with a per-connection data key and only opened in memory during a run.
+            <span className="font-mono">tare-service-principal</span>, generate a secret, and paste it
+            here. The secret is sealed with a per-connection data key and only opened in memory during a run.
           </p>
           <ConnectForm
             initial={{
@@ -46,68 +46,93 @@ export default async function ConnectPage() {
               hasSecret: Boolean(conn),
             }}
           />
-        </div>
-      </section>
+        </CardBody>
+      </Card>
 
-      <section className="panel">
-        <header>
-          <span className="title">2 · Grant read access to the system catalog</span>
-          <span className="label">Nothing beyond these five lines</span>
-        </header>
-        <div className="pad">
-          <pre
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 12.5,
-              lineHeight: 1.75,
-              background: "var(--color-ink)",
-              color: "#C6CEDA",
-              padding: "18px 20px",
-              overflowX: "auto",
-              margin: 0,
-              whiteSpace: "pre",
-            }}
-          >
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>2 · Grant read access to the system catalog</CardTitle>
+          <CardHint>Nothing beyond these five lines</CardHint>
+        </CardHeader>
+        <CardBody>
+          <pre className="font-mono text-[12.5px] leading-[1.75] bg-ink text-[#C6CEDA] px-5 py-4 overflow-x-auto m-0 whitespace-pre">
             {GRANTS}
           </pre>
-          <p className="mut" style={{ fontSize: 13, marginTop: 14 }}>
+          <p className="text-muted text-[13px] mt-3.5">
             Optional, for savings verification:{" "}
-            <span className="data">SELECT ON SCHEMA system.access</span>.
+            <span className="font-mono">SELECT ON SCHEMA system.access</span>.
           </p>
-        </div>
-      </section>
+        </CardBody>
+      </Card>
 
-      <section className="panel">
-        <header><span className="title">3 · Development shortcut</span><span className="label">No workspace yet</span></header>
-        <div className="pad">
-          <p className="mut" style={{ margin: 0, maxWidth: "72ch" }}>
-            Set <span className="data">USE_FAKE_INGEST=1</span> in the environment. &ldquo;Start ingestion&rdquo;
-            will populate the DB with deterministic synthetic data so the rest of the product is exercisable
-            end-to-end. Numbers are not calibrated to anything real — do not read them as findings.
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>3 · Pick a SQL warehouse</CardTitle>
+          <CardHint>Queries run on your compute, billed to you</CardHint>
+        </CardHeader>
+        <Table>
+          <THead>
+            <TR>
+              <TH className="w-10" />
+              <TH>Warehouse</TH>
+              <TH>Size</TH>
+              <TH>State</TH>
+              <TH className="text-right">Typical daily cost of Tare</TH>
+            </TR>
+          </THead>
+          <TBody>
+            <TR>
+              <TD>○</TD>
+              <TD className="font-mono">bi-warehouse</TD>
+              <TD className="font-mono">Small</TD>
+              <TD className="text-muted text-[13px]">Running</TD>
+              <TD className="text-right"><Money amount={40} basis="estimated" /></TD>
+            </TR>
+            <TR>
+              <TD>○</TD>
+              <TD className="font-mono">ops-serverless</TD>
+              <TD className="font-mono">2X-Small</TD>
+              <TD className="text-muted text-[13px]">Stopped</TD>
+              <TD className="text-right"><Money amount={25} basis="estimated" /></TD>
+            </TR>
+          </TBody>
+        </Table>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>4 · Development shortcut</CardTitle>
+          <CardHint>No workspace yet</CardHint>
+        </CardHeader>
+        <CardBody>
+          <p className="text-muted max-w-[72ch] m-0">
+            Set <span className="font-mono">USE_FAKE_INGEST=1</span> in the environment. &ldquo;Start
+            ingestion&rdquo; will populate the DB with deterministic synthetic data so the rest of the
+            product is exercisable end-to-end. Numbers are not calibrated — do not read them as findings.
           </p>
-        </div>
-      </section>
+        </CardBody>
+      </Card>
     </AppShell>
   );
 }
 
-const LABEL: Record<ConnectionStatus, { text: string; variant: "muted" | "rec" | "thr" | "ovr" }> = {
-  pending:      { text: "pending",         variant: "muted" },
-  ok:           { text: "connected",       variant: "rec" },
-  auth_failed:  { text: "auth failed",     variant: "ovr" },
-  permission:   { text: "grant missing",   variant: "ovr" },
-  schema_drift: { text: "schema drift",    variant: "ovr" },
-  quota:        { text: "quota",           variant: "thr" },
-  error:        { text: "error",           variant: "ovr" },
+const LABEL: Record<ConnectionStatus, { text: string; variant: "muted" | "recovered" | "threshold" | "overrun" }> = {
+  pending:      { text: "pending",       variant: "muted" },
+  ok:           { text: "connected",     variant: "recovered" },
+  auth_failed:  { text: "auth failed",   variant: "overrun" },
+  permission:   { text: "grant missing", variant: "overrun" },
+  schema_drift: { text: "schema drift",  variant: "overrun" },
+  quota:        { text: "quota",         variant: "threshold" },
+  error:        { text: "error",         variant: "overrun" },
 };
 
 function StatusPill({ status, message }: { status: ConnectionStatus | null; message: string | null }) {
-  if (!status) return <Pill variant="ovr" dot>not connected</Pill>;
+  if (!status) return <Badge variant="overrun" dot>not connected</Badge>;
   const cfg = LABEL[status];
   return (
-    <span style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-      <Pill variant={cfg.variant} dot>{cfg.text}</Pill>
-      {message ? <span className="mut" style={{ fontSize: 12, fontFamily: "var(--font-mono)" }}>{message}</span> : null}
+    <span className="flex flex-wrap items-center gap-2.5">
+      <Badge variant={cfg.variant} dot>{cfg.text}</Badge>
+      {message ? <span className="text-muted text-[12px] font-mono">{message}</span> : null}
     </span>
   );
 }

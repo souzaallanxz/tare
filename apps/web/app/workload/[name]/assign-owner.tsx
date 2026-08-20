@@ -1,9 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Button } from "../../../components/ui/button";
+import { Input, Label } from "../../../components/ui/input";
 import { assignManualOwnerAction } from "../../owners/actions";
 
 type Owner = { id: string; name: string; kind: "team" | "person" };
+
+const selectCls =
+  "h-9 w-full px-2.5 border border-rule bg-surface text-ink font-mono text-[12.5px] hover:border-ink " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink";
 
 export function AssignOwnerButton({
   entityId,
@@ -19,11 +26,9 @@ export function AssignOwnerButton({
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const [mode, setMode] = useState<"existing" | "new">(owners.length > 0 ? "existing" : "new");
-  const [error, setError] = useState<string | null>(null);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
     const fd = new FormData(e.currentTarget);
     let ownerName: string;
     let ownerKind: "team" | "person";
@@ -31,7 +36,7 @@ export function AssignOwnerButton({
       const id = String(fd.get("ownerId") ?? "");
       const owner = owners.find((o) => o.id === id);
       if (!owner) {
-        setError("Choose an owner.");
+        toast.error("Choose an owner.");
         return;
       }
       ownerName = owner.name;
@@ -40,60 +45,55 @@ export function AssignOwnerButton({
       ownerName = String(fd.get("ownerName") ?? "").trim();
       ownerKind = (String(fd.get("ownerKind") ?? "team")) as "team" | "person";
       if (!ownerName) {
-        setError("Enter a name.");
+        toast.error("Enter a name.");
         return;
       }
     }
     start(async () => {
       const r = await assignManualOwnerAction({ entityId, ownerName, ownerKind });
-      if (!r.ok) setError(r.error);
-      else setOpen(false);
+      if (!r.ok) toast.error(r.error);
+      else {
+        toast.success("Owner assigned.");
+        setOpen(false);
+      }
     });
   }
 
   if (!open) {
     return (
-      <button className="btn s" type="button" onClick={() => setOpen(true)}>
+      <Button size="sm" type="button" onClick={() => setOpen(true)}>
         {currentOwnerName ? "Change owner" : "Assign an owner"}
-      </button>
+      </Button>
     );
   }
 
   return (
-    <form
-      onSubmit={submit}
-      style={{
-        border: "1px solid var(--color-rule)",
-        background: "var(--color-surface)",
-        padding: 14,
-        display: "grid",
-        gap: 10,
-        minWidth: 340,
-      }}
-    >
-      <div style={{ display: "flex", gap: 8 }}>
+    <form onSubmit={submit} className="border border-rule bg-surface p-3.5 grid gap-2.5 min-w-[340px]">
+      <div className="flex gap-2">
         {owners.length > 0 && (
-          <button
+          <Button
             type="button"
-            className={mode === "existing" ? "btn s" : "btn ghost s"}
+            size="sm"
+            variant={mode === "existing" ? "default" : "ghost"}
             onClick={() => setMode("existing")}
           >
             Existing
-          </button>
+          </Button>
         )}
-        <button
+        <Button
           type="button"
-          className={mode === "new" ? "btn s" : "btn ghost s"}
+          size="sm"
+          variant={mode === "new" ? "default" : "ghost"}
           onClick={() => setMode("new")}
         >
           New
-        </button>
+        </Button>
       </div>
 
       {mode === "existing" ? (
         <div>
-          <label className="label" htmlFor="ownerId">Owner</label>
-          <select id="ownerId" name="ownerId" required style={ip}>
+          <Label htmlFor="ownerId">Owner</Label>
+          <select id="ownerId" name="ownerId" required className={selectCls}>
             <option value="">Choose…</option>
             {owners.map((o) => (
               <option key={o.id} value={o.id}>{o.name} · {o.kind}</option>
@@ -101,14 +101,14 @@ export function AssignOwnerButton({
           </select>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
+        <div className="grid grid-cols-[1fr_auto] gap-2">
           <div>
-            <label className="label" htmlFor="ownerName">Owner name</label>
-            <input id="ownerName" name="ownerName" required placeholder="Data Platform" style={ip} />
+            <Label htmlFor="ownerName">Owner name</Label>
+            <Input id="ownerName" name="ownerName" required placeholder="Data Platform" />
           </div>
           <div>
-            <label className="label" htmlFor="ownerKind">Kind</label>
-            <select id="ownerKind" name="ownerKind" defaultValue="team" style={ip}>
+            <Label htmlFor="ownerKind">Kind</Label>
+            <select id="ownerKind" name="ownerKind" defaultValue="team" className={selectCls}>
               <option value="team">team</option>
               <option value="person">person</option>
             </select>
@@ -116,32 +116,19 @@ export function AssignOwnerButton({
         </div>
       )}
 
-      <p className="mut" style={{ fontSize: 12, margin: 0 }}>
+      <p className="text-muted text-[12px] m-0">
         Manual assignments override rule-based attribution. Rule re-runs will not touch this entity.
         {currentSource ? ` Currently resolved from: ${currentSource}.` : ""}
       </p>
 
-      {error ? (
-        <p style={{ color: "var(--color-overrun)", fontSize: 13, margin: 0 }}>{error}</p>
-      ) : null}
-
-      <div style={{ display: "flex", gap: 8 }}>
-        <button className="btn s" type="submit" disabled={pending}>
+      <div className="flex gap-2">
+        <Button size="sm" type="submit" disabled={pending}>
           {pending ? "Assigning…" : "Assign"}
-        </button>
-        <button type="button" className="btn ghost s" onClick={() => setOpen(false)}>
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
 }
-
-const ip: React.CSSProperties = {
-  width: "100%",
-  padding: "8px 10px",
-  border: "1px solid var(--color-rule)",
-  background: "var(--color-surface)",
-  fontFamily: "var(--font-mono)",
-  fontSize: 12.5,
-};
