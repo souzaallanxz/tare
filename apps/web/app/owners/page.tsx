@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { withTenant } from "@tare/db";
 import {
   listAttributionRules,
@@ -82,9 +83,12 @@ export default async function OwnersPage() {
                 {spends.map((o) => (
                   <TR key={o.ownerId ?? "unattr"}>
                     <TD>
-                      <span className={o.ownerId === null ? "font-medium text-overrun" : "font-medium"}>
+                      <Link
+                        href={`/owners/${o.ownerId ?? "unattr"}` as never}
+                        className={o.ownerId === null ? "font-medium text-overrun hover:underline" : "font-medium hover:underline"}
+                      >
                         {o.name}
-                      </span>
+                      </Link>
                     </TD>
                     <TD className="text-right font-mono tabular-nums">{o.entities}</TD>
                     <TD className="text-right"><Money amount={o.spendMinor} basis="billed" /></TD>

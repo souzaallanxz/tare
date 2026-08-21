@@ -15,6 +15,8 @@ import { Kpi, KpiGrid } from "../../components/ui/kpi";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { FIXTURE } from "../../lib/fixtures";
 import { getOverviewData } from "../../lib/overview-data";
+import { forecastReliability } from "../../lib/forecast-reliability";
+import { getSkuBreakdown } from "../../lib/sku-breakdown";
 import { requireSession } from "../../lib/session";
 
 export default async function OverviewPage() {
@@ -32,11 +34,15 @@ export default async function OverviewPage() {
   });
   if (!conn && !hasRun) redirect("/connect");
 
-  const [data, anomalies] = await Promise.all([
-    getOverviewData(session.activeTenant.id),
+  const data = await getOverviewData(session.activeTenant.id);
+
+  const [anomalies, skus] = await Promise.all([
     withTenant(session.activeTenant.id, (ctx) => listRecentAnomalies(ctx, { days: 30, limit: 8 })),
+    getSkuBreakdown(session.activeTenant.id, monthBoundsFromDaily(data.dailyMinor).start, monthBoundsFromDaily(data.dailyMinor).end),
   ]);
+
   const pctOfBudget = ((data.forecastMinor / data.budgetMinor) * 100).toFixed(1);
+  const reliability = forecastReliability(data.dailyMinor.slice(0, data.billedDays));
 
   return (
     <AppShell active="overview" session={session}>
@@ -69,7 +75,12 @@ export default async function OverviewPage() {
           tone="estimated"
           label="Forecast, month end"
           value={<Money amount={data.forecastMinor} basis="estimated" currency={data.currency} />}
-          hint="Same weekday, trailing four weeks"
+          hint={
+            <span className="flex items-center gap-2">
+              <ReliabilityBadge level={reliability.level} />
+              <span>{reliability.reasons.join(" · ")}</span>
+            </span>
+          }
         />
         <Kpi
           label="Budget"
@@ -83,10 +94,15 @@ export default async function OverviewPage() {
           <Card>
             <CardHeader>
               <CardTitle>Daily spend</CardTitle>
-              <CardHint>Bars after the billed cut are forecast</CardHint>
+              <CardHint>Bars after the billed cut are forecast · green line is the 7-day mean</CardHint>
             </CardHeader>
             <CardBody>
-              <DailyChart dailyMinor={data.dailyMinor} billedDays={data.billedDays} currency={data.currency} />
+              <DailyChart
+                dailyMinor={data.dailyMinor}
+                billedDays={data.billedDays}
+                currency={data.currency}
+                monthlyBudgetMinor={data.budgetMinor}
+              />
             </CardBody>
           </Card>
 
@@ -155,6 +171,37 @@ export default async function OverviewPage() {
               </p>
             </CardBody>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>By SKU</CardTitle>
+              <CardHint>Month to date</CardHint>
+            </CardHeader>
+            {skus.length === 0 ? (
+              <CardBody className="text-muted">No usage in the current month.</CardBody>
+            ) : (
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>SKU</TH>
+                    <TH className="text-right">Cost</TH>
+                    <TH className="text-right">Share</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {skus.slice(0, 6).map((r) => (
+                    <TR key={r.sku}>
+                      <TD className="font-mono text-[12px]">{r.sku}</TD>
+                      <TD className="text-right">
+                        <Money amount={r.costMinor} basis={r.basis} currency={data.currency} />
+                      </TD>
+                      <TD className="text-right font-mono tabular-nums">{r.pct.toFixed(1)}%</TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+          </Card>
         </div>
       </div>
 
@@ -167,4 +214,22 @@ export default async function OverviewPage() {
       </Card>
     </AppShell>
   );
+}
+
+function ReliabilityBadge({ level }: { level: "high" | "medium" | "low" }) {
+  if (level === "high") return <Badge variant="recovered">reliability: high</Badge>;
+  if (level === "medium") return <Badge variant="threshold">reliability: medium</Badge>;
+  return <Badge variant="overrun">reliability: low</Badge>;
+}
+
+function monthBoundsFromDaily(daily: readonly number[]): { start: string; end: string } {
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const days = daily.length;
+  const end = new Date(monthStart);
+  end.setUTCDate(monthStart.getUTCDate() + days - 1);
+  return {
+    start: monthStart.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
 }

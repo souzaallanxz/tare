@@ -232,6 +232,9 @@ function humanRule(id: string): string {
     case "instance_mismatch":   return "Instance-type mismatch";
     case "cost_break":          return "Cost break";
     case "unattributed":        return "Unattributed spend";
+    case "right_sizing":        return "Autoscale cap set too high";
+    case "dbr_upgrade":         return "Runtime version needs upgrading";
+    case "spot_candidate":      return "Job could run on spot instances";
     default:                    return id;
   }
 }
