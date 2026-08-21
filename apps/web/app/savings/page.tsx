@@ -1,11 +1,20 @@
 import { withTenant } from "@tare/db";
-import { listRecommendations, savingsSummary } from "@tare/db/repositories";
+import {
+  listRecommendations,
+  monthlySavings,
+  ruleEffectiveness,
+  savingsSummary,
+  verificationFunnel,
+} from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
+import { Funnel } from "../../components/funnel";
 import { Money } from "../../components/money";
+import { MonthlySavingsChart } from "../../components/monthly-savings-chart";
 import { PageHeader } from "../../components/page-header";
 import { BasisPill, StatePill } from "../../components/pills";
 import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../components/ui/card";
 import { Kpi, KpiGrid } from "../../components/ui/kpi";
+import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { requireSession } from "../../lib/session";
 import { SweepButton, TransitionButton } from "./action-buttons";
 import type { RecommendationState } from "@tare/core";
@@ -14,10 +23,16 @@ const SEQUENCE: RecommendationState[] = ["open", "accepted", "applied", "verifyi
 
 export default async function SavingsPage() {
   const session = await requireSession();
-  const { recs, summary } = await withTenant(session.activeTenant.id, async (ctx) => ({
-    recs: await listRecommendations(ctx),
-    summary: await savingsSummary(ctx),
-  }));
+  const { recs, summary, monthly, funnel, effectiveness } = await withTenant(
+    session.activeTenant.id,
+    async (ctx) => ({
+      recs: await listRecommendations(ctx),
+      summary: await savingsSummary(ctx),
+      monthly: await monthlySavings(ctx, 12),
+      funnel: await verificationFunnel(ctx),
+      effectiveness: await ruleEffectiveness(ctx),
+    }),
+  );
 
   const currency = (summary.currency ?? "EUR") as "EUR" | "USD";
   const verifyingRecs = recs.filter((r) => r.state === "verifying");
@@ -67,6 +82,73 @@ export default async function SavingsPage() {
           tone={closureRate === null ? "default" : closureRate >= 70 ? "recovered" : closureRate >= 40 ? "threshold" : "overrun"}
         />
       </KpiGrid>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Savings run rate</CardTitle>
+            <CardHint>Confirmed savings by month · last 12 months</CardHint>
+          </CardHeader>
+          <CardBody>
+            <MonthlySavingsChart data={monthly} currency={currency} />
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Verification funnel</CardTitle>
+            <CardHint>Lifetime recommendations by state</CardHint>
+          </CardHeader>
+          <CardBody>
+            <Funnel stages={funnel} />
+          </CardBody>
+        </Card>
+      </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Rule effectiveness</CardTitle>
+          <CardHint>Ranked by confirmed savings</CardHint>
+        </CardHeader>
+        {effectiveness.length === 0 ? (
+          <CardBody className="text-muted">
+            No findings yet. Rules run after every ingestion.
+          </CardBody>
+        ) : (
+          <Table>
+            <THead>
+              <TR>
+                <TH>Rule</TH>
+                <TH className="text-right">Opened</TH>
+                <TH className="text-right">Pending</TH>
+                <TH className="text-right">Confirmed</TH>
+                <TH className="text-right">Not observed</TH>
+                <TH className="text-right">Confirmation rate</TH>
+                <TH className="text-right">Confirmed €</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {effectiveness.map((r) => (
+                <TR key={r.rule}>
+                  <TD>{humanRule(r.rule)}</TD>
+                  <TD className="text-right font-mono tabular-nums">{r.opened}</TD>
+                  <TD className="text-right font-mono tabular-nums">{r.pending}</TD>
+                  <TD className="text-right font-mono tabular-nums text-recovered">{r.confirmed}</TD>
+                  <TD className="text-right font-mono tabular-nums text-overrun">{r.notObserved}</TD>
+                  <TD className="text-right font-mono tabular-nums">
+                    {r.confirmationRate !== null
+                      ? `${r.confirmationRate.toFixed(0)}%`
+                      : <span className="text-muted">—</span>}
+                  </TD>
+                  <TD className="text-right">
+                    <Money amount={r.confirmedAmountMinor} basis="billed" currency={currency} tone="down" />
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        )}
+      </Card>
 
       {recs.length === 0 ? (
         <Card>

@@ -72,6 +72,116 @@ export type SavingsSummary = {
   notObservedCount: number;
 };
 
+export type MonthlySaving = { month: string; amountMinor: number; currency: string };
+
+export async function monthlySavings(
+  ctx: TenantContext,
+  months = 12,
+): Promise<MonthlySaving[]> {
+  const res = await ctx.query<{ month: string; total: number; currency: string }>(
+    `SELECT to_char(date_trunc('month', confirmed_at), 'YYYY-MM') AS month,
+            COALESCE(SUM(amount_minor), 0)::bigint AS total,
+            MAX(currency) AS currency
+     FROM saving
+     WHERE tenant_id = $1
+       AND confirmed_at >= (date_trunc('month', CURRENT_DATE) - ($2 - 1 || ' months')::interval)
+     GROUP BY 1
+     ORDER BY 1`,
+    [ctx.tenantId, months],
+  );
+  return res.rows.map((r) => ({
+    month: r.month,
+    amountMinor: Number(r.total),
+    currency: r.currency ?? "EUR",
+  }));
+}
+
+export type FunnelStage = {
+  state: RecommendationState;
+  count: number;
+  totalImpactMinor: number;
+};
+
+export async function verificationFunnel(ctx: TenantContext): Promise<FunnelStage[]> {
+  const res = await ctx.query<{
+    state: RecommendationState;
+    n: number;
+    impact: number;
+  }>(
+    `SELECT state::text AS state, COUNT(*)::int AS n,
+            COALESCE(SUM(impact_minor), 0)::bigint AS impact
+     FROM recommendation
+     WHERE tenant_id = $1
+     GROUP BY state`,
+    [ctx.tenantId],
+  );
+  const byState = new Map(res.rows.map((r) => [r.state, r]));
+  const order: RecommendationState[] = [
+    "open",
+    "accepted",
+    "applied",
+    "verifying",
+    "confirmed",
+    "not_observed",
+  ];
+  return order.map((state) => {
+    const row = byState.get(state);
+    return {
+      state,
+      count: row?.n ?? 0,
+      totalImpactMinor: row ? Number(row.impact) : 0,
+    };
+  });
+}
+
+export type RuleEffectivenessRow = {
+  rule: string;
+  opened: number;
+  confirmed: number;
+  notObserved: number;
+  pending: number;
+  confirmationRate: number | null;    // confirmed / (confirmed + not_observed)
+  confirmedAmountMinor: number;
+};
+
+export async function ruleEffectiveness(
+  ctx: TenantContext,
+): Promise<RuleEffectivenessRow[]> {
+  const res = await ctx.query<{
+    rule: string;
+    opened: number;
+    confirmed: number;
+    not_observed: number;
+    pending: number;
+    confirmed_amount: number;
+  }>(
+    `SELECT r.rule,
+            COUNT(*)::int AS opened,
+            COUNT(*) FILTER (WHERE r.state = 'confirmed')::int    AS confirmed,
+            COUNT(*) FILTER (WHERE r.state = 'not_observed')::int AS not_observed,
+            COUNT(*) FILTER (WHERE r.state NOT IN ('confirmed', 'not_observed'))::int AS pending,
+            COALESCE(SUM(s.amount_minor), 0)::bigint AS confirmed_amount
+     FROM recommendation r
+     LEFT JOIN saving s ON s.recommendation_id = r.id AND s.tenant_id = r.tenant_id
+     WHERE r.tenant_id = $1
+     GROUP BY r.rule
+     ORDER BY confirmed_amount DESC, opened DESC`,
+    [ctx.tenantId],
+  );
+  return res.rows.map((r) => {
+    const closed = r.confirmed + r.not_observed;
+    return {
+      rule: r.rule,
+      opened: r.opened,
+      confirmed: r.confirmed,
+      notObserved: r.not_observed,
+      pending: r.pending,
+      confirmationRate: closed > 0 ? (r.confirmed / closed) * 100 : null,
+      confirmedAmountMinor: Number(r.confirmed_amount),
+    };
+  });
+}
+
 export async function savingsSummary(ctx: TenantContext): Promise<SavingsSummary> {
   const s = await ctx.query<{ total: number; currency: string | null }>(
     `SELECT COALESCE(SUM(amount_minor), 0)::bigint AS total, MAX(currency) AS currency
