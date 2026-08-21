@@ -17,6 +17,15 @@ import { BasisPill, Pill } from "./pills";
 import { Badge } from "./ui/badge";
 import { Table, TBody, TD, TH, THead, TR } from "./ui/table";
 
+// TanStack's ColumnMeta is loose by default. Declare our extension so the
+// alignment flag flows through with type safety.
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends unknown, TValue> {
+    align?: "left" | "right";
+  }
+}
+
 export type LedgerRow = {
   id: string;
   usageDate: string;
@@ -90,18 +99,22 @@ export function LedgerTable({ rows }: { rows: readonly LedgerRow[] }) {
       },
       {
         accessorKey: "dbus",
-        header: () => <span className="block text-right">DBUs</span>,
+        header: "DBUs",
+        meta: { align: "right" },
         cell: ({ getValue }) => (
-          <span className="font-mono tabular-nums block text-right">{Number(getValue<number>()).toFixed(1)}</span>
+          <span className="font-mono tabular-nums">{Number(getValue<number>()).toFixed(1)}</span>
         ),
       },
       {
         accessorKey: "costMinor",
-        header: () => <span className="block text-right">Cost</span>,
+        header: "Cost",
+        meta: { align: "right" },
         cell: ({ row }) => (
-          <span className="block text-right">
-            <Money amount={row.original.costMinor} basis={row.original.costBasis} currency={row.original.currency} />
-          </span>
+          <Money
+            amount={row.original.costMinor}
+            basis={row.original.costBasis}
+            currency={row.original.currency}
+          />
         ),
       },
       {
@@ -134,13 +147,18 @@ export function LedgerTable({ rows }: { rows: readonly LedgerRow[] }) {
             {hg.headers.map((h) => {
               const sorted = h.column.getIsSorted();
               const canSort = h.column.getCanSort();
+              const align = h.column.columnDef.meta?.align ?? "left";
+              const classes = [
+                canSort ? "cursor-pointer select-none hover:text-ink" : "",
+                align === "right" ? "text-right" : "",
+              ].filter(Boolean).join(" ");
               return (
                 <TH
                   key={h.id}
                   onClick={canSort ? h.column.getToggleSortingHandler() : undefined}
-                  className={canSort ? "cursor-pointer select-none hover:text-ink" : undefined}
+                  className={classes || undefined}
                 >
-                  <span className="inline-flex items-center gap-1">
+                  <span className={align === "right" ? "inline-flex items-center gap-1 justify-end" : "inline-flex items-center gap-1"}>
                     {flexRender(h.column.columnDef.header, h.getContext())}
                     {canSort ? (
                       sorted === "asc" ? <ChevronUp className="h-3 w-3" />
@@ -157,9 +175,14 @@ export function LedgerTable({ rows }: { rows: readonly LedgerRow[] }) {
       <TBody>
         {table.getRowModel().rows.map((r) => (
           <TR key={r.id}>
-            {r.getVisibleCells().map((c) => (
-              <TD key={c.id}>{flexRender(c.column.columnDef.cell, c.getContext())}</TD>
-            ))}
+            {r.getVisibleCells().map((c) => {
+              const align = c.column.columnDef.meta?.align ?? "left";
+              return (
+                <TD key={c.id} className={align === "right" ? "text-right" : undefined}>
+                  {flexRender(c.column.columnDef.cell, c.getContext())}
+                </TD>
+              );
+            })}
           </TR>
         ))}
       </TBody>

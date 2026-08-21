@@ -14,6 +14,8 @@ import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../component
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { getRuntimeDistribution } from "../../lib/runtime-distribution";
 import { listRecentIngestRuns } from "../../lib/ingest-history";
+import { cloudInfraSummary } from "@tare/db/repositories";
+import { CloudInfraPanel } from "./cloud-infra-panel";
 import { requireSession } from "../../lib/session";
 import { InviteForm } from "./invite-form";
 import { RemoveInviteButton, RemoveMemberButton } from "./row-actions";
@@ -24,13 +26,18 @@ const REVOKE = `REVOKE USE CATALOG ON CATALOG system FROM \`tare-service-princip
 
 export default async function SettingsPage() {
   const session = await requireSession();
-  const [{ members, invitations, budgets, owners, rateCard }, runtimes, runs] = await Promise.all([
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
+
+  const [{ members, invitations, budgets, owners, rateCard, infra }, runtimes, runs] = await Promise.all([
     withTenant(session.activeTenant.id, async (ctx) => ({
       members: await listMembers(ctx),
       invitations: await listInvitations(ctx),
       budgets: await listBudgets(ctx),
       owners: await listOwners(ctx),
       rateCard: await listRateCard(ctx),
+      infra: await cloudInfraSummary(ctx, monthStart, monthEnd),
     })),
     getRuntimeDistribution(session.activeTenant.id),
     listRecentIngestRuns(session.activeTenant.id, 15),
@@ -57,6 +64,34 @@ export default async function SettingsPage() {
           )}
         </CardHeader>
         <RateCardPanel entries={rateCard} currency={session.activeTenant.currency} />
+      </Card>
+
+      <Card
+        className={
+          "mb-6 border-l-2 " +
+          (infra.rows === 0 ? "border-l-estimated" : "border-l-recovered")
+        }
+      >
+        <CardHeader>
+          <CardTitle>Azure Cost Management</CardTitle>
+          {infra.rows === 0 ? (
+            <Badge variant="estimated">absent · infra cost invisible</Badge>
+          ) : (
+            <Badge variant="recovered">
+              {infra.rows.toLocaleString("en-IE")} rows · billed
+            </Badge>
+          )}
+        </CardHeader>
+        <CloudInfraPanel
+          summary={{
+            totalMinor: infra.totalMinor,
+            currency: infra.currency,
+            rows: infra.rows,
+            windowStart: infra.windowStart,
+            windowEnd: infra.windowEnd,
+            byService: infra.byService,
+          }}
+        />
       </Card>
 
       <Card className="mb-6">

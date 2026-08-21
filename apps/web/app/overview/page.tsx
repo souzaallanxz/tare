@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { withTenant } from "@tare/db";
-import { getConnection, listRecentAnomalies } from "@tare/db/repositories";
+import { cloudInfraSummary, getConnection, listRecentAnomalies } from "@tare/db/repositories";
 import { AnomalyList } from "../../components/anomaly-list";
 import { AppShell } from "../../components/shell";
 import { DailyChart } from "../../components/daily-chart";
@@ -36,9 +36,11 @@ export default async function OverviewPage() {
 
   const data = await getOverviewData(session.activeTenant.id);
 
-  const [anomalies, skus] = await Promise.all([
+  const { start: mStart, end: mEnd } = monthBoundsFromDaily(data.dailyMinor);
+  const [anomalies, skus, infra] = await Promise.all([
     withTenant(session.activeTenant.id, (ctx) => listRecentAnomalies(ctx, { days: 30, limit: 8 })),
-    getSkuBreakdown(session.activeTenant.id, monthBoundsFromDaily(data.dailyMinor).start, monthBoundsFromDaily(data.dailyMinor).end),
+    getSkuBreakdown(session.activeTenant.id, mStart, mEnd),
+    withTenant(session.activeTenant.id, (ctx) => cloudInfraSummary(ctx, mStart, mEnd)),
   ]);
 
   const pctOfBudget = ((data.forecastMinor / data.budgetMinor) * 100).toFixed(1);
@@ -129,6 +131,42 @@ export default async function OverviewPage() {
           label="Data freshness"
           value={freshnessAge(data.ingestedAt)}
           hint={<FreshnessBadge ingestedAt={data.ingestedAt} />}
+        />
+      </KpiGrid>
+
+      <KpiGrid cols={3}>
+        <Kpi
+          label="Databricks spend"
+          value={<Money amount={data.billedMinor} basis="billed" currency={data.currency} />}
+          hint="DBUs × contracted rate"
+        />
+        <Kpi
+          label="Cloud infrastructure"
+          tone={infra.rows === 0 ? "estimated" : "default"}
+          value={
+            infra.rows > 0 ? (
+              <Money amount={infra.totalMinor} basis={infra.basis} currency={infra.currency as "EUR" | "USD"} />
+            ) : (
+              "—"
+            )
+          }
+          hint={
+            infra.rows > 0
+              ? `${infra.rows.toLocaleString("en-IE")} lines · Azure`
+              : "Upload an Azure export in settings"
+          }
+        />
+        <Kpi
+          label="Total, month to date"
+          tone={infra.rows === 0 ? "estimated" : "default"}
+          value={
+            <Money
+              amount={data.billedMinor + infra.totalMinor}
+              basis={infra.rows > 0 ? infra.basis : "estimated"}
+              currency={data.currency}
+            />
+          }
+          hint={infra.rows === 0 ? "Missing cloud infra makes total estimated" : "Databricks + Azure"}
         />
       </KpiGrid>
 

@@ -1,11 +1,9 @@
 import { withTenant } from "@tare/db";
 import { getConnection, type ConnectionStatus } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
-import { Money } from "../../components/money";
 import { PageHeader } from "../../components/page-header";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../components/ui/card";
-import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
 import { requireSession } from "../../lib/session";
 import { ConnectForm } from "./connect-form";
 
@@ -63,40 +61,6 @@ export default async function ConnectPage() {
             <span className="font-mono">SELECT ON SCHEMA system.access</span>.
           </p>
         </CardBody>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>3 · Pick a SQL warehouse</CardTitle>
-          <CardHint>Queries run on your compute, billed to you</CardHint>
-        </CardHeader>
-        <Table>
-          <THead>
-            <TR>
-              <TH className="w-10" />
-              <TH>Warehouse</TH>
-              <TH>Size</TH>
-              <TH>State</TH>
-              <TH className="text-right">Typical daily cost of Tare</TH>
-            </TR>
-          </THead>
-          <TBody>
-            <TR>
-              <TD>○</TD>
-              <TD className="font-mono">bi-warehouse</TD>
-              <TD className="font-mono">Small</TD>
-              <TD className="text-muted text-[13px]">Running</TD>
-              <TD className="text-right"><Money amount={40} basis="estimated" /></TD>
-            </TR>
-            <TR>
-              <TD>○</TD>
-              <TD className="font-mono">ops-serverless</TD>
-              <TD className="font-mono">2X-Small</TD>
-              <TD className="text-muted text-[13px]">Stopped</TD>
-              <TD className="text-right"><Money amount={25} basis="estimated" /></TD>
-            </TR>
-          </TBody>
-        </Table>
       </Card>
 
       <Card className="mb-6">

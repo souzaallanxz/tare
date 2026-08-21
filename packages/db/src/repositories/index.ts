@@ -10,3 +10,4 @@ export * from "./budget.ts";
 export * from "./rate-card.ts";
 export * from "./anomaly.ts";
 export * from "./assessment-lead.ts";
+export * from "./cloud-infra.ts";
