@@ -34,6 +34,14 @@ html, body {
   outline-offset: 2px;
 }
 
+/* Right-aligned numeric cells collapse to their content width; the first
+   left-aligned column then absorbs remaining table width. Classic 1% trick. */
+table th.text-right,
+table td.text-right {
+  width: 1%;
+  white-space: nowrap;
+}
+
 /* Small utility set — the design system is thin on purpose. */
 .label {
   font-family: var(--font-mono);
