@@ -9,3 +9,4 @@ export * from "./report.ts";
 export * from "./budget.ts";
 export * from "./rate-card.ts";
 export * from "./anomaly.ts";
+export * from "./assessment-lead.ts";
