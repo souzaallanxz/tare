@@ -35,6 +35,8 @@ export type OwnerSpend = {
   name: string;
   spendMinor: number;
   entities: number;
+  dbus: number;
+  costPerDbuMinor: number | null;
 };
 
 /** Owner totals for a window. Uses the same rollup the Overview reads. */
@@ -45,9 +47,10 @@ export async function ownerSpendBetween(
 ): Promise<OwnerSpend[]> {
   const res = await ctx.query<{
     owner_id: string | null;
-    name: string | null;
+    name: string;
     spend: number;
     entities: number;
+    dbus: number;
   }>(
     `WITH totals AS (
        SELECT r.owner_id, SUM(r.cost_minor)::bigint AS spend
@@ -60,23 +63,39 @@ export async function ownerSpendBetween(
        FROM entity_owner eo
        WHERE eo.tenant_id = $1
        GROUP BY eo.owner_id
+     ),
+     dbu AS (
+       SELECT eo.owner_id, SUM(u.dbus)::float8 AS dbus
+       FROM usage_daily u
+       LEFT JOIN entity_owner eo
+         ON eo.tenant_id = u.tenant_id AND eo.entity_id = u.entity_id
+       WHERE u.tenant_id = $1 AND u.usage_date BETWEEN $2 AND $3
+       GROUP BY eo.owner_id
      )
      SELECT t.owner_id,
             COALESCE(o.name, 'Unattributed') AS name,
             t.spend,
-            COALESCE(e.entities, 0) AS entities
+            COALESCE(e.entities, 0) AS entities,
+            COALESCE(d.dbus, 0)::float8 AS dbus
      FROM totals t
      LEFT JOIN owner o ON o.id = t.owner_id
      LEFT JOIN ent   e ON e.owner_id IS NOT DISTINCT FROM t.owner_id
+     LEFT JOIN dbu   d ON d.owner_id IS NOT DISTINCT FROM t.owner_id
      ORDER BY t.spend DESC`,
     [ctx.tenantId, start, end],
   );
-  return res.rows.map((r) => ({
-    ownerId: r.owner_id,
-    name: r.name!,
-    spendMinor: Number(r.spend),
-    entities: r.entities,
-  }));
+  return res.rows.map((r) => {
+    const dbus = Number(r.dbus);
+    const spend = Number(r.spend);
+    return {
+      ownerId: r.owner_id,
+      name: r.name,
+      spendMinor: spend,
+      entities: r.entities,
+      dbus,
+      costPerDbuMinor: dbus > 0 ? Math.round(spend / dbus) : null,
+    };
+  });
 }
 
 // ─────────────────────── attribution rules ─────────────────────

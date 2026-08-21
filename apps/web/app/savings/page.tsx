@@ -23,6 +23,12 @@ export default async function SavingsPage() {
   const verifyingRecs = recs.filter((r) => r.state === "verifying");
   const verifyingMinor = verifyingRecs.reduce((s, r) => s + (r.impactMinor ?? 0), 0);
 
+  // Closure rate = confirmed / (confirmed + not_observed). Ignores states
+  // still in flight. If nobody's finished a cycle yet, we say so.
+  const confirmedCount = recs.filter((r) => r.state === "confirmed").length;
+  const closedTotal = confirmedCount + summary.notObservedCount;
+  const closureRate = closedTotal > 0 ? (confirmedCount / closedTotal) * 100 : null;
+
   return (
     <AppShell active="savings" session={session}>
       <PageHeader
@@ -31,7 +37,7 @@ export default async function SavingsPage() {
         actions={<SweepButton />}
       />
 
-      <KpiGrid cols={3}>
+      <KpiGrid>
         <Kpi
           tone="recovered"
           label="Confirmed, lifetime"
@@ -49,6 +55,16 @@ export default async function SavingsPage() {
           label="Not observed"
           value={String(summary.notObservedCount)}
           hint="Applied, but no measurable fall"
+        />
+        <Kpi
+          label="Closure rate"
+          value={closureRate !== null ? `${closureRate.toFixed(0)}%` : "—"}
+          hint={
+            closureRate !== null
+              ? `${confirmedCount} confirmed / ${closedTotal} closed`
+              : "No verifications closed yet"
+          }
+          tone={closureRate === null ? "default" : closureRate >= 70 ? "recovered" : closureRate >= 40 ? "threshold" : "overrun"}
         />
       </KpiGrid>
 

@@ -80,7 +80,9 @@ export default async function OwnersPage() {
                 <TR>
                   <TH>Owner</TH>
                   <TH className="text-right">Entities</TH>
+                  <TH className="text-right">DBUs</TH>
                   <TH className="text-right">Spend</TH>
+                  <TH className="text-right">Rate / DBU</TH>
                   <TH className="text-right">Share</TH>
                 </TR>
               </THead>
@@ -96,7 +98,15 @@ export default async function OwnersPage() {
                       </Link>
                     </TD>
                     <TD className="text-right font-mono tabular-nums">{o.entities}</TD>
+                    <TD className="text-right font-mono tabular-nums">
+                      {o.dbus.toLocaleString("en-IE", { maximumFractionDigits: 0 })}
+                    </TD>
                     <TD className="text-right"><Money amount={o.spendMinor} basis="billed" /></TD>
+                    <TD className="text-right">
+                      {o.costPerDbuMinor !== null
+                        ? <Money amount={o.costPerDbuMinor} basis="billed" />
+                        : <span className="text-muted">—</span>}
+                    </TD>
                     <TD className="text-right font-mono tabular-nums">
                       {totalMinor > 0 ? ((o.spendMinor / totalMinor) * 100).toFixed(1) : "0.0"}%
                     </TD>

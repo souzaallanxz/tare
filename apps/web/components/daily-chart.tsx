@@ -19,17 +19,20 @@ type Props = {
   currency?: "EUR" | "USD";
   /** Optional monthly budget (major units) — a horizontal line at the daily equivalent. */
   monthlyBudgetMinor?: number;
+  /** When true, overlays a running-total line on a secondary axis. */
+  cumulative?: boolean;
 };
 
 const INK = "#101A2B";
 const ESTIMATED = "#7A6CA8";
 const RECOVERED = "#1F6F5C";
 const THRESHOLD = "#C08A2E";
+const MUTED = "#5A6675";
 
 /**
- * Bars are cost. Line is the 7-day rolling mean, drawn in green because it
- * is a diagnostic quantity, not a value the user can act on. Optional dashed
- * reference line at the daily budget (monthly limit ÷ days-in-month).
+ * Bars are cost. The green line is the 7-day rolling mean. Optional dashed
+ * reference line at the daily budget. When `cumulative` is on, a muted
+ * running-total line rides a secondary axis so the two scales do not fight.
  */
 export function DailyChart({
   dailyMinor,
@@ -37,13 +40,19 @@ export function DailyChart({
   height = 180,
   currency = "EUR",
   monthlyBudgetMinor,
+  cumulative = false,
 }: Props) {
-  const data = dailyMinor.map((v, i) => ({
-    day: i + 1,
-    cost: v / 100,
-    billed: i < billedDays,
-    ma7: rollingMean(dailyMinor, i, 7) / 100,
-  }));
+  let running = 0;
+  const data = dailyMinor.map((v, i) => {
+    running += v;
+    return {
+      day: i + 1,
+      cost: v / 100,
+      billed: i < billedDays,
+      ma7: rollingMean(dailyMinor, i, 7) / 100,
+      cumulative: running / 100,
+    };
+  });
 
   const dailyBudget =
     monthlyBudgetMinor && monthlyBudgetMinor > 0
@@ -56,12 +65,13 @@ export function DailyChart({
         <ComposedChart data={data} margin={{ top: 6, right: 6, left: 6, bottom: 0 }} barCategoryGap={2}>
           <XAxis
             dataKey="day"
-            tick={{ fontFamily: "var(--font-mono)", fontSize: 10, fill: "#5A6675" }}
+            tick={{ fontFamily: "var(--font-mono)", fontSize: 10, fill: MUTED }}
             tickLine={false}
             axisLine={{ stroke: "#D7DDE5" }}
             interval={6}
           />
-          <YAxis hide />
+          <YAxis yAxisId="left" hide />
+          {cumulative ? <YAxis yAxisId="right" orientation="right" hide /> : null}
           <Tooltip
             cursor={{ fill: "rgba(16,26,43,.05)" }}
             contentStyle={{
@@ -84,12 +94,14 @@ export function DailyChart({
                 return [`${fmt} · ${basis}`, "cost"];
               }
               if (name === "ma7") return [fmt, "7-day mean"];
+              if (name === "cumulative") return [fmt, "running total"];
               return [fmt, name];
             }}
             separator=""
           />
           {dailyBudget !== null && (
             <ReferenceLine
+              yAxisId="left"
               y={dailyBudget}
               stroke={THRESHOLD}
               strokeDasharray="3 3"
@@ -103,12 +115,13 @@ export function DailyChart({
               }}
             />
           )}
-          <Bar dataKey="cost" radius={[1, 1, 0, 0]}>
+          <Bar yAxisId="left" dataKey="cost" radius={[1, 1, 0, 0]}>
             {data.map((d, i) => (
               <Cell key={i} fill={d.billed ? INK : ESTIMATED} fillOpacity={d.billed ? 1 : 0.7} />
             ))}
           </Bar>
           <Line
+            yAxisId="left"
             type="monotone"
             dataKey="ma7"
             stroke={RECOVERED}
@@ -117,6 +130,19 @@ export function DailyChart({
             activeDot={{ r: 3 }}
             isAnimationActive={false}
           />
+          {cumulative ? (
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="cumulative"
+              stroke={MUTED}
+              strokeWidth={1}
+              strokeDasharray="2 3"
+              dot={false}
+              activeDot={{ r: 2 }}
+              isAnimationActive={false}
+            />
+          ) : null}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

@@ -96,7 +96,7 @@ export default async function OverviewPage() {
         />
       </KpiGrid>
 
-      <KpiGrid cols={3}>
+      <KpiGrid>
         <Kpi
           label="DBUs consumed"
           value={data.dbusTotal.toLocaleString("en-IE", { maximumFractionDigits: 0 })}
@@ -125,6 +125,11 @@ export default async function OverviewPage() {
           }
           tone={data.weekOverWeekPct === null ? "default" : data.weekOverWeekPct > 5 ? "overrun" : data.weekOverWeekPct < -5 ? "recovered" : "default"}
         />
+        <Kpi
+          label="Data freshness"
+          value={freshnessAge(data.ingestedAt)}
+          hint={<FreshnessBadge ingestedAt={data.ingestedAt} />}
+        />
       </KpiGrid>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-6 items-start">
@@ -140,6 +145,7 @@ export default async function OverviewPage() {
                 billedDays={data.billedDays}
                 currency={data.currency}
                 monthlyBudgetMinor={data.budgetMinor}
+                cumulative
               />
             </CardBody>
           </Card>
@@ -272,6 +278,21 @@ function DeltaBadge({ pct, label }: { pct: number; label: string }) {
 function formatSignedPct(pct: number): string {
   const sign = pct > 0 ? "+" : "";
   return `${sign}${pct.toFixed(1)}%`;
+}
+
+function freshnessAge(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const h = Math.floor(ms / 3_600_000);
+  if (h < 1) return `${Math.floor(ms / 60_000)}m`;
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}
+
+function FreshnessBadge({ ingestedAt }: { ingestedAt: string }) {
+  const ageH = (Date.now() - new Date(ingestedAt).getTime()) / 3_600_000;
+  const variant = ageH < 6 ? "recovered" : ageH < 24 ? "muted" : ageH < 48 ? "threshold" : "overrun";
+  const label = ageH < 6 ? "current" : ageH < 24 ? "today" : ageH < 48 ? "stale" : "very stale";
+  return <Badge variant={variant}>{label}</Badge>;
 }
 
 function monthBoundsFromDaily(daily: readonly number[]): { start: string; end: string } {
