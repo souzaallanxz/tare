@@ -43,7 +43,8 @@ export default async function OverviewPage() {
     withTenant(session.activeTenant.id, (ctx) => cloudInfraSummary(ctx, mStart, mEnd)),
   ]);
 
-  const pctOfBudget = ((data.forecastMinor / data.budgetMinor) * 100).toFixed(1);
+  const totalMinor = data.billedMinor + infra.totalMinor;
+  const totalBasis = infra.rows > 0 ? infra.basis : "estimated";
   const reliability = forecastReliability(data.dailyMinor.slice(0, data.billedDays));
 
   return (
@@ -62,83 +63,19 @@ export default async function OverviewPage() {
         }
       />
 
+      {/* Money — spend and forecast */}
+      <div className="mb-2 flex items-baseline gap-3">
+        <h2 className="font-mono text-[11px] uppercase tracking-[.14em] text-muted">Spend, month to date</h2>
+      </div>
       <KpiGrid>
         <Kpi
-          label="Spend with no owner"
-          value={`${data.unattributedPct.toFixed(1)}%`}
-          hint={<Money amount={data.unattributedMinor} basis="billed" currency={data.currency} />}
-        />
-        <Kpi
-          label="Spend to date"
+          label="Databricks"
           value={<Money amount={data.billedMinor} basis="billed" currency={data.currency} />}
           hint={
-            <span className="flex flex-wrap items-center gap-2">
-              <span>
-                {data.billedDays} day{data.billedDays === 1 ? "" : "s"}
-              </span>
-              {data.monthOverMonthPct !== null && <DeltaBadge pct={data.monthOverMonthPct} label="vs prev month" />}
-            </span>
+            data.monthOverMonthPct !== null
+              ? <DeltaBadge pct={data.monthOverMonthPct} label="vs prev month, same days" />
+              : `${data.billedDays} day${data.billedDays === 1 ? "" : "s"}`
           }
-        />
-        <Kpi
-          tone="estimated"
-          label="Forecast, month end"
-          value={<Money amount={data.forecastMinor} basis="estimated" currency={data.currency} />}
-          hint={
-            <span className="flex flex-wrap items-center gap-2">
-              <ReliabilityBadge level={reliability.level} />
-              <span>{reliability.reasons.join(" · ")}</span>
-            </span>
-          }
-        />
-        <Kpi
-          label="Budget"
-          value={`€${(data.budgetMinor / 100).toLocaleString("en-IE", { maximumFractionDigits: 0 })}`}
-          hint={<Badge variant="threshold">{pctOfBudget}% projected</Badge>}
-        />
-      </KpiGrid>
-
-      <KpiGrid>
-        <Kpi
-          label="DBUs consumed"
-          value={data.dbusTotal.toLocaleString("en-IE", { maximumFractionDigits: 0 })}
-          hint="Month to date"
-        />
-        <Kpi
-          label="Blended rate"
-          value={
-            data.costPerDbuMinor !== null ? (
-              <Money amount={data.costPerDbuMinor} basis="billed" currency={data.currency} />
-            ) : (
-              "—"
-            )
-          }
-          hint="Cost per DBU across all SKUs"
-        />
-        <Kpi
-          label="Week over week"
-          value={data.weekOverWeekPct !== null ? formatSignedPct(data.weekOverWeekPct) : "—"}
-          hint={
-            data.weekOverWeekPct !== null ? (
-              <DeltaBadge pct={data.weekOverWeekPct} label="last 7 vs prior 7" />
-            ) : (
-              "Not enough history"
-            )
-          }
-          tone={data.weekOverWeekPct === null ? "default" : data.weekOverWeekPct > 5 ? "overrun" : data.weekOverWeekPct < -5 ? "recovered" : "default"}
-        />
-        <Kpi
-          label="Data freshness"
-          value={freshnessAge(data.ingestedAt)}
-          hint={<FreshnessBadge ingestedAt={data.ingestedAt} />}
-        />
-      </KpiGrid>
-
-      <KpiGrid cols={3}>
-        <Kpi
-          label="Databricks spend"
-          value={<Money amount={data.billedMinor} basis="billed" currency={data.currency} />}
-          hint="DBUs × contracted rate"
         />
         <Kpi
           label="Cloud infrastructure"
@@ -157,20 +94,50 @@ export default async function OverviewPage() {
           }
         />
         <Kpi
-          label="Total, month to date"
-          tone={infra.rows === 0 ? "estimated" : "default"}
-          value={
-            <Money
-              amount={data.billedMinor + infra.totalMinor}
-              basis={infra.rows > 0 ? infra.basis : "estimated"}
-              currency={data.currency}
-            />
+          label="Total"
+          tone={totalBasis === "estimated" ? "estimated" : "default"}
+          value={<Money amount={totalMinor} basis={totalBasis} currency={data.currency} />}
+          hint={infra.rows === 0 ? "Missing cloud infra keeps total estimated" : "Databricks + cloud"}
+        />
+        <Kpi
+          tone="estimated"
+          label="Forecast, month end"
+          value={<Money amount={data.forecastMinor} basis="estimated" currency={data.currency} />}
+          hint={
+            <span className="flex flex-wrap items-center gap-2">
+              <ReliabilityBadge level={reliability.level} />
+              <span>{reliability.reasons.join(" · ")}</span>
+            </span>
           }
-          hint={infra.rows === 0 ? "Missing cloud infra makes total estimated" : "Databricks + Azure"}
         />
       </KpiGrid>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-6 items-start">
+      {/* Signals — health of the numbers, not the numbers themselves */}
+      <div className="mb-2 mt-6 flex items-baseline gap-3">
+        <h2 className="font-mono text-[11px] uppercase tracking-[.14em] text-muted">Signals</h2>
+      </div>
+      <KpiGrid cols={3}>
+        <Kpi
+          label="Spend with no owner"
+          tone={data.unattributedPct >= 25 ? "overrun" : data.unattributedPct >= 10 ? "threshold" : "default"}
+          value={`${data.unattributedPct.toFixed(1)}%`}
+          hint={<Money amount={data.unattributedMinor} basis="billed" currency={data.currency} />}
+        />
+        <Kpi
+          label="Week over week"
+          tone={data.weekOverWeekPct === null ? "default" : data.weekOverWeekPct > 5 ? "overrun" : data.weekOverWeekPct < -5 ? "recovered" : "default"}
+          value={data.weekOverWeekPct !== null ? formatSignedPct(data.weekOverWeekPct) : "—"}
+          hint={data.weekOverWeekPct !== null ? "Last 7 vs prior 7 · billed only" : "Not enough history"}
+        />
+        <Kpi
+          label="Data freshness"
+          value={freshnessAge(data.ingestedAt)}
+          hint={<FreshnessBadge ingestedAt={data.ingestedAt} />}
+        />
+      </KpiGrid>
+
+      {/* Chart + top workloads left · budget + savings + consumption right */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-6 items-start mt-6">
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -229,6 +196,9 @@ export default async function OverviewPage() {
           <Card>
             <CardHeader>
               <CardTitle>Against budget</CardTitle>
+              <CardHint>
+                {`€${(data.budgetMinor / 100).toLocaleString("en-IE", { maximumFractionDigits: 0 })} monthly · ${((data.forecastMinor / data.budgetMinor) * 100).toFixed(1)}% projected`}
+              </CardHint>
             </CardHeader>
             <CardBody>
               <SpendBar
@@ -237,19 +207,25 @@ export default async function OverviewPage() {
                 budgetMinor={data.budgetMinor}
                 currency={data.currency}
               />
+              <ConsumptionStats
+                dbus={data.dbusTotal}
+                costPerDbuMinor={data.costPerDbuMinor}
+                currency={data.currency}
+              />
             </CardBody>
           </Card>
 
           <Card>
             <CardHeader>
               <CardTitle>Confirmed savings</CardTitle>
+              <CardHint>Lifetime</CardHint>
             </CardHeader>
             <CardBody>
               <div className="font-mono text-[30px] font-medium text-recovered">
                 €{(FIXTURE.lifetimeConfirmedMinor / 100).toLocaleString("en-IE", { maximumFractionDigits: 0 })}
               </div>
               <p className="text-muted text-[13px] mt-2">
-                Over twelve months, each amount verified against subsequent billing.
+                Each amount verified against subsequent billing.
               </p>
             </CardBody>
           </Card>
@@ -295,6 +271,35 @@ export default async function OverviewPage() {
         <AnomalyList rows={anomalies} />
       </Card>
     </AppShell>
+  );
+}
+
+function ConsumptionStats({
+  dbus,
+  costPerDbuMinor,
+  currency,
+}: {
+  dbus: number;
+  costPerDbuMinor: number | null;
+  currency: "EUR" | "USD";
+}) {
+  return (
+    <div className="mt-5 pt-4 border-t border-rule grid grid-cols-2 gap-4 text-[13px]">
+      <div>
+        <div className="font-mono text-[11px] uppercase tracking-[.12em] text-muted">DBUs consumed</div>
+        <div className="font-mono tabular-nums text-[16px] mt-1">
+          {dbus.toLocaleString("en-IE", { maximumFractionDigits: 0 })}
+        </div>
+      </div>
+      <div>
+        <div className="font-mono text-[11px] uppercase tracking-[.12em] text-muted">Blended rate / DBU</div>
+        <div className="font-mono tabular-nums text-[16px] mt-1">
+          {costPerDbuMinor !== null
+            ? <Money amount={costPerDbuMinor} basis="billed" currency={currency} />
+            : <span className="text-muted">—</span>}
+        </div>
+      </div>
+    </div>
   );
 }
 

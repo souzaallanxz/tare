@@ -21,13 +21,13 @@ export default async function ConnectPage() {
     <AppShell active="connect" session={session}>
       <PageHeader
         title="Connection"
-        description="Four steps. Read-only throughout, and revocable in one statement."
+        description="Read-only throughout. Revocable in one statement."
         actions={<StatusPill status={conn?.status ?? null} message={conn?.statusMessage ?? null} />}
       />
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>1 · Save the service principal</CardTitle>
+          <CardTitle>Service principal</CardTitle>
           <CardHint>Secret is envelope-encrypted before it hits the database</CardHint>
         </CardHeader>
         <CardBody>
@@ -49,7 +49,7 @@ export default async function ConnectPage() {
 
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>2 · Grant read access to the system catalog</CardTitle>
+          <CardTitle>Grant read access to the system catalog</CardTitle>
           <CardHint>Nothing beyond these five lines</CardHint>
         </CardHeader>
         <CardBody>
@@ -79,7 +79,7 @@ export default async function ConnectPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>4 · Development shortcut</CardTitle>
+          <CardTitle>Development shortcut</CardTitle>
           <CardHint>No workspace yet</CardHint>
         </CardHeader>
         <CardBody>
