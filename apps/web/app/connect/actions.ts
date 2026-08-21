@@ -24,6 +24,7 @@ import {
 } from "@tare/ingest";
 import { addDays, toIsoDate } from "@tare/core";
 import { requireSession } from "../../lib/session";
+import { notifyIngestFailure } from "../../lib/notify-ingest-failure";
 
 const HOST_RE = /^[a-z0-9.-]+\.(azuredatabricks|databricks|databricks-dev)\.(net|com)$/i;
 
@@ -164,14 +165,28 @@ export async function startIngestionAction(
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      return { ok: false as const, message: msg };
+      const cls =
+        err && typeof err === "object" && "class" in err ? String((err as { class: string }).class) : "unknown";
+      return { ok: false as const, message: msg, errorClass: cls };
     }
   });
+
+  if (!result.ok) {
+    await notifyIngestFailure(session.activeTenant.id, {
+      source: useFake ? "fake_databricks" : "databricks",
+      errorClass: result.errorClass ?? "unknown",
+      errorMessage: result.message,
+      windowStart: start,
+      windowEnd: end,
+    });
+  }
 
   revalidatePath("/overview");
   revalidatePath("/ledger");
   revalidatePath("/connect");
-  return result;
+  return result.ok
+    ? { ok: true, message: result.message, rows: result.rows }
+    : { ok: false, message: result.message };
 }
 
 async function buildDatabricksSource(

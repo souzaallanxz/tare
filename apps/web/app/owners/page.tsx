@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { withTenant } from "@tare/db";
 import {
+  attributionRuleDrift,
   listAttributionRules,
   ownerSpendBetween,
   type Matcher,
+  type RuleDrift,
 } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
 import { Money } from "../../components/money";
@@ -23,10 +25,11 @@ export default async function OwnersPage() {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
 
-  const [{ spends, rules }, trend] = await Promise.all([
+  const [{ spends, rules, drift }, trend] = await Promise.all([
     withTenant(session.activeTenant.id, async (ctx) => ({
       spends: await ownerSpendBetween(ctx, monthStart, monthEnd),
       rules: await listAttributionRules(ctx),
+      drift: await attributionRuleDrift(ctx),
     })),
     getOwnerTrend(session.activeTenant.id),
   ]);
@@ -130,6 +133,37 @@ export default async function OwnersPage() {
             </CardBody>
           </Card>
         </>
+      )}
+
+      {drift.length > 0 && (
+        <Card className="mb-6 border-l-2 border-l-threshold">
+          <CardHeader>
+            <CardTitle>Rules losing matches</CardTitle>
+            <CardHint>vs the trailing 14-day median</CardHint>
+          </CardHeader>
+          <Table>
+            <THead>
+              <TR>
+                <TH>Matcher</TH>
+                <TH>Owner</TH>
+                <TH className="text-right">Was</TH>
+                <TH className="text-right">Now</TH>
+                <TH className="text-right">Drop</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {drift.map((d) => (
+                <TR key={d.ruleId}>
+                  <TD className="font-mono">{describeMatcher(d.matcher)}</TD>
+                  <TD>{d.ownerName}</TD>
+                  <TD className="text-right font-mono tabular-nums">{d.priorHits}</TD>
+                  <TD className="text-right font-mono tabular-nums">{d.currentHits}</TD>
+                  <TD className="text-right font-mono tabular-nums text-overrun">−{d.droppedByPct}%</TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        </Card>
       )}
 
       <Card className="mb-6">

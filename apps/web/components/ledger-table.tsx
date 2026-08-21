@@ -14,6 +14,7 @@ import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
 import type { Basis, Currency } from "@tare/core";
 import { Money } from "./money";
 import { BasisPill, Pill } from "./pills";
+import { Badge } from "./ui/badge";
 import { Table, TBody, TD, TH, THead, TR } from "./ui/table";
 
 export type LedgerRow = {
@@ -68,7 +69,16 @@ export function LedgerTable({ rows }: { rows: readonly LedgerRow[] }) {
       {
         accessorKey: "sku",
         header: "SKU",
-        cell: ({ getValue }) => <span className="font-mono text-[13px] text-muted">{getValue<string>()}</span>,
+        cell: ({ getValue }) => {
+          const sku = getValue<string>();
+          const serverless = /^\s*SERVERLESS[_ ]/i.test(sku);
+          return (
+            <span className="font-mono text-[13px] text-muted inline-flex items-center gap-2">
+              {sku}
+              {serverless ? <Badge variant="ink">serverless</Badge> : null}
+            </span>
+          );
+        },
       },
       {
         accessorKey: "ownerName",

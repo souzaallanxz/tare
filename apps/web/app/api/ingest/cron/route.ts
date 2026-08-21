@@ -17,6 +17,7 @@ import {
 } from "@tare/db/repositories";
 import { deserialize, envKekProvider, open } from "@tare/crypto";
 import { addDays, toIsoDate } from "@tare/core";
+import { notifyIngestFailure } from "../../../../lib/notify-ingest-failure";
 
 /**
  * Hourly ingestion scheduler. Fires for every tenant with an 'ok' workspace
@@ -70,7 +71,17 @@ export async function GET(req: Request): Promise<Response> {
       });
       results.push({ tenant: t.id, ...result });
     } catch (err) {
-      results.push({ tenant: t.id, error: err instanceof Error ? err.message : String(err) });
+      const msg = err instanceof Error ? err.message : String(err);
+      const cls =
+        err && typeof err === "object" && "class" in err ? String((err as { class: string }).class) : "unknown";
+      results.push({ tenant: t.id, error: msg });
+      await notifyIngestFailure(t.id, {
+        source: useFake ? "fake_databricks" : "databricks",
+        errorClass: cls,
+        errorMessage: msg,
+        windowStart: start,
+        windowEnd: end,
+      });
     }
   }
 

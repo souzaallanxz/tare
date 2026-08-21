@@ -161,6 +161,76 @@ export async function deleteAttributionRule(ctx: TenantContext, id: string): Pro
   );
 }
 
+export type RuleDrift = {
+  ruleId: string;
+  ownerName: string;
+  matcher: Matcher;
+  currentHits: number;
+  priorHits: number;
+  droppedByPct: number;
+};
+
+/**
+ * Compare today's hit count for each active rule against the median hit
+ * count from a trailing 14-day window ending 7 days ago. A large drop
+ * suggests the customer renamed a tag or the emitting job stopped, and
+ * the rule is no longer doing anything. Rules with too little history to
+ * judge get filtered out.
+ */
+export async function attributionRuleDrift(
+  ctx: TenantContext,
+  minPriorHits = 2,
+  dropThresholdPct = 50,
+): Promise<RuleDrift[]> {
+  const res = await ctx.query<{
+    rule_id: string;
+    owner_name: string;
+    matcher: Matcher;
+    current: number;
+    prior: number;
+  }>(
+    `WITH latest AS (
+       SELECT DISTINCT ON (rule_id) rule_id, entities
+       FROM attribution_rule_hit
+       WHERE tenant_id = $1
+       ORDER BY rule_id, observed_on DESC
+     ),
+     prior AS (
+       SELECT rule_id,
+              percentile_cont(0.5) WITHIN GROUP (ORDER BY entities)::int AS entities
+       FROM attribution_rule_hit
+       WHERE tenant_id = $1
+         AND observed_on BETWEEN (CURRENT_DATE - INTERVAL '21 days')
+                             AND (CURRENT_DATE - INTERVAL '7 days')
+       GROUP BY rule_id
+     )
+     SELECT r.id AS rule_id,
+            o.name AS owner_name,
+            r.matcher,
+            COALESCE(l.entities, 0)::int AS current,
+            COALESCE(p.entities, 0)::int AS prior
+     FROM attribution_rule r
+     JOIN owner o ON o.id = r.owner_id
+     LEFT JOIN latest l ON l.rule_id = r.id
+     LEFT JOIN prior  p ON p.rule_id = r.id
+     WHERE r.tenant_id = $1 AND r.active = true
+     ORDER BY r.priority`,
+    [ctx.tenantId],
+  );
+
+  return res.rows
+    .filter((r) => r.prior >= minPriorHits && r.current < r.prior)
+    .map((r) => ({
+      ruleId: r.rule_id,
+      ownerName: r.owner_name,
+      matcher: r.matcher,
+      currentHits: r.current,
+      priorHits: r.prior,
+      droppedByPct: r.prior > 0 ? Math.round(((r.prior - r.current) / r.prior) * 100) : 0,
+    }))
+    .filter((r) => r.droppedByPct >= dropThresholdPct);
+}
+
 export async function nextRulePriority(ctx: TenantContext): Promise<number> {
   const res = await ctx.query<{ max: number | null }>(
     `SELECT MAX(priority) AS max FROM attribution_rule WHERE tenant_id = $1`,

@@ -10,6 +10,7 @@ export type WorkloadEntity = {
   lastSeen: IsoDate;
   ownerName: string | null;
   ownerSource: string | null;
+  serverless: boolean;
 };
 
 export type WorkloadConfig = {
@@ -63,11 +64,13 @@ export async function getWorkloadByExternalId(
       last_seen: string;
       owner_name: string | null;
       owner_source: string | null;
+      serverless: boolean;
     }>(
       `SELECT e.id, e.kind, e.external_id, e.name,
               e.first_seen::text AS first_seen, e.last_seen::text AS last_seen,
               o.name AS owner_name,
-              eo.source::text AS owner_source
+              eo.source::text AS owner_source,
+              e.serverless
        FROM entity e
        LEFT JOIN entity_owner eo ON eo.tenant_id = e.tenant_id AND eo.entity_id = e.id
        LEFT JOIN owner o ON o.id = eo.owner_id
@@ -88,6 +91,7 @@ export async function getWorkloadByExternalId(
       lastSeen: row.last_seen,
       ownerName: row.owner_name,
       ownerSource: row.owner_source,
+      serverless: row.serverless,
     };
 
     const dailyRes = await ctx.query<{

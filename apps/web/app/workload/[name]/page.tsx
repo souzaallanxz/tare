@@ -50,7 +50,12 @@ export default async function WorkloadPage({ params }: { params: Promise<{ name:
   return (
     <AppShell active="ledger" session={session}>
       <PageHeader
-        eyebrow={<><Link href="/ledger" className="hover:underline">Ledger</Link> / {entity.kind}</>}
+        eyebrow={
+          <>
+            <Link href="/ledger" className="hover:underline">Ledger</Link> / {entity.kind}
+            {entity.serverless ? <Badge variant="ink" className="ml-2">serverless</Badge> : null}
+          </>
+        }
         title={entity.name}
         description={
           entity.ownerName

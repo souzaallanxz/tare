@@ -25,11 +25,13 @@ export function fakeSource(opts: { currency?: "EUR" | "USD"; seed?: number } = {
     capabilities: CAPABILITIES,
     async *fetch(range) {
       const entities: Array<{ name: string; kind: "job" | "cluster" | "warehouse"; sku: string; baseDbus: number; tags: Record<string, string> }> = [
-        { name: "nightly-ingest",     kind: "job",       sku: "JOBS_COMPUTE", baseDbus: 400, tags: { team: "platform", env: "prod" } },
-        { name: "ad-hoc-sql",         kind: "warehouse", sku: "SQL_PRO",      baseDbus: 180, tags: {} },
-        { name: "shared-interactive", kind: "cluster",   sku: "ALL_PURPOSE",  baseDbus: 100, tags: {} },
-        { name: "bi-refresh",         kind: "job",       sku: "JOBS_COMPUTE", baseDbus: 150, tags: { team: "analytics" } },
-        { name: "ml-training",        kind: "job",       sku: "GPU_ML",       baseDbus:  40, tags: { team: "ds" } },
+        { name: "nightly-ingest",     kind: "job",       sku: "JOBS_COMPUTE",           baseDbus: 400, tags: { team: "platform", env: "prod" } },
+        { name: "ad-hoc-sql",         kind: "warehouse", sku: "SQL_PRO",                baseDbus: 180, tags: {} },
+        { name: "shared-interactive", kind: "cluster",   sku: "ALL_PURPOSE",            baseDbus: 100, tags: {} },
+        { name: "bi-refresh",         kind: "job",       sku: "JOBS_COMPUTE",           baseDbus: 150, tags: { team: "analytics" } },
+        { name: "ml-training",        kind: "job",       sku: "GPU_ML",                 baseDbus:  40, tags: { team: "ds" } },
+        { name: "serverless-adhoc",   kind: "warehouse", sku: "SERVERLESS_SQL_PRO",     baseDbus:  90, tags: { team: "analytics" } },
+        { name: "serverless-etl",     kind: "job",       sku: "SERVERLESS_JOBS",        baseDbus:  70, tags: { team: "platform" } },
       ];
 
       const usage = [];
@@ -77,11 +79,13 @@ export function fakeSource(opts: { currency?: "EUR" | "USD"; seed?: number } = {
 function rate(sku: string): number {
   // Same order of magnitude as real DBU rates, but not calibrated to anything.
   switch (sku) {
-    case "JOBS_COMPUTE": return 0.30;
-    case "SQL_PRO":      return 0.55;
-    case "ALL_PURPOSE":  return 0.55;
-    case "GPU_ML":       return 2.10;
-    default:             return 0.40;
+    case "JOBS_COMPUTE":         return 0.30;
+    case "SQL_PRO":              return 0.55;
+    case "ALL_PURPOSE":          return 0.55;
+    case "GPU_ML":               return 2.10;
+    case "SERVERLESS_SQL_PRO":   return 0.70;
+    case "SERVERLESS_JOBS":      return 0.45;
+    default:                     return 0.40;
   }
 }
 
