@@ -69,14 +69,21 @@ export default async function OverviewPage() {
         <Kpi
           label="Spend to date"
           value={<Money amount={data.billedMinor} basis="billed" currency={data.currency} />}
-          hint={`${data.billedDays} day${data.billedDays === 1 ? "" : "s"} · rate card set in settings`}
+          hint={
+            <span className="flex flex-wrap items-center gap-2">
+              <span>
+                {data.billedDays} day{data.billedDays === 1 ? "" : "s"}
+              </span>
+              {data.monthOverMonthPct !== null && <DeltaBadge pct={data.monthOverMonthPct} label="vs prev month" />}
+            </span>
+          }
         />
         <Kpi
           tone="estimated"
           label="Forecast, month end"
           value={<Money amount={data.forecastMinor} basis="estimated" currency={data.currency} />}
           hint={
-            <span className="flex items-center gap-2">
+            <span className="flex flex-wrap items-center gap-2">
               <ReliabilityBadge level={reliability.level} />
               <span>{reliability.reasons.join(" · ")}</span>
             </span>
@@ -86,6 +93,37 @@ export default async function OverviewPage() {
           label="Budget"
           value={`€${(data.budgetMinor / 100).toLocaleString("en-IE", { maximumFractionDigits: 0 })}`}
           hint={<Badge variant="threshold">{pctOfBudget}% projected</Badge>}
+        />
+      </KpiGrid>
+
+      <KpiGrid cols={3}>
+        <Kpi
+          label="DBUs consumed"
+          value={data.dbusTotal.toLocaleString("en-IE", { maximumFractionDigits: 0 })}
+          hint="Month to date"
+        />
+        <Kpi
+          label="Blended rate"
+          value={
+            data.costPerDbuMinor !== null ? (
+              <Money amount={data.costPerDbuMinor} basis="billed" currency={data.currency} />
+            ) : (
+              "—"
+            )
+          }
+          hint="Cost per DBU across all SKUs"
+        />
+        <Kpi
+          label="Week over week"
+          value={data.weekOverWeekPct !== null ? formatSignedPct(data.weekOverWeekPct) : "—"}
+          hint={
+            data.weekOverWeekPct !== null ? (
+              <DeltaBadge pct={data.weekOverWeekPct} label="last 7 vs prior 7" />
+            ) : (
+              "Not enough history"
+            )
+          }
+          tone={data.weekOverWeekPct === null ? "default" : data.weekOverWeekPct > 5 ? "overrun" : data.weekOverWeekPct < -5 ? "recovered" : "default"}
         />
       </KpiGrid>
 
@@ -220,6 +258,20 @@ function ReliabilityBadge({ level }: { level: "high" | "medium" | "low" }) {
   if (level === "high") return <Badge variant="recovered">reliability: high</Badge>;
   if (level === "medium") return <Badge variant="threshold">reliability: medium</Badge>;
   return <Badge variant="overrun">reliability: low</Badge>;
+}
+
+function DeltaBadge({ pct, label }: { pct: number; label: string }) {
+  const variant = pct > 5 ? "overrun" : pct < -5 ? "recovered" : "muted";
+  return (
+    <Badge variant={variant}>
+      {formatSignedPct(pct)} {label}
+    </Badge>
+  );
+}
+
+function formatSignedPct(pct: number): string {
+  const sign = pct > 0 ? "+" : "";
+  return `${sign}${pct.toFixed(1)}%`;
 }
 
 function monthBoundsFromDaily(daily: readonly number[]): { start: string; end: string } {

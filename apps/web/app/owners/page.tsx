@@ -7,10 +7,12 @@ import {
 } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
 import { Money } from "../../components/money";
+import { OwnerTrendChart } from "../../components/owner-trend-chart";
 import { PageHeader } from "../../components/page-header";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
+import { getOwnerTrend } from "../../lib/owner-trend";
 import { requireSession } from "../../lib/session";
 import { AddRuleForm } from "./add-rule-form";
 import { DeleteRuleButton } from "./delete-rule-button";
@@ -21,10 +23,13 @@ export default async function OwnersPage() {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).toISOString().slice(0, 10);
 
-  const { spends, rules } = await withTenant(session.activeTenant.id, async (ctx) => ({
-    spends: await ownerSpendBetween(ctx, monthStart, monthEnd),
-    rules: await listAttributionRules(ctx),
-  }));
+  const [{ spends, rules }, trend] = await Promise.all([
+    withTenant(session.activeTenant.id, async (ctx) => ({
+      spends: await ownerSpendBetween(ctx, monthStart, monthEnd),
+      rules: await listAttributionRules(ctx),
+    })),
+    getOwnerTrend(session.activeTenant.id),
+  ]);
 
   const totalMinor = spends.reduce((s, o) => s + o.spendMinor, 0);
   const unattr = spends.find((o) => o.ownerId === null);
@@ -99,6 +104,20 @@ export default async function OwnersPage() {
                 ))}
               </TBody>
             </Table>
+          </Card>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Daily stack, 30 days</CardTitle>
+              <CardHint>Top 5 owners + Other</CardHint>
+            </CardHeader>
+            <CardBody>
+              <OwnerTrendChart
+                days={trend.days}
+                ownerNames={trend.ownerNames}
+                currency={trend.currency}
+              />
+            </CardBody>
           </Card>
         </>
       )}

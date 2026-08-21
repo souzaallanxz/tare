@@ -7,10 +7,13 @@ import {
   listRateCard,
 } from "@tare/db/repositories";
 import { AppShell } from "../../components/shell";
+import { Money } from "../../components/money";
 import { PageHeader } from "../../components/page-header";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardBody, CardHeader, CardHint, CardTitle } from "../../components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "../../components/ui/table";
+import { getRuntimeDistribution } from "../../lib/runtime-distribution";
+import { listRecentIngestRuns } from "../../lib/ingest-history";
 import { requireSession } from "../../lib/session";
 import { InviteForm } from "./invite-form";
 import { RemoveInviteButton, RemoveMemberButton } from "./row-actions";
@@ -21,13 +24,17 @@ const REVOKE = `REVOKE USE CATALOG ON CATALOG system FROM \`tare-service-princip
 
 export default async function SettingsPage() {
   const session = await requireSession();
-  const { members, invitations, budgets, owners, rateCard } = await withTenant(session.activeTenant.id, async (ctx) => ({
-    members: await listMembers(ctx),
-    invitations: await listInvitations(ctx),
-    budgets: await listBudgets(ctx),
-    owners: await listOwners(ctx),
-    rateCard: await listRateCard(ctx),
-  }));
+  const [{ members, invitations, budgets, owners, rateCard }, runtimes, runs] = await Promise.all([
+    withTenant(session.activeTenant.id, async (ctx) => ({
+      members: await listMembers(ctx),
+      invitations: await listInvitations(ctx),
+      budgets: await listBudgets(ctx),
+      owners: await listOwners(ctx),
+      rateCard: await listRateCard(ctx),
+    })),
+    getRuntimeDistribution(session.activeTenant.id),
+    listRecentIngestRuns(session.activeTenant.id, 15),
+  ]);
 
   return (
     <AppShell active="settings" session={session}>
@@ -138,6 +145,86 @@ export default async function SettingsPage() {
         </Card>
       )}
 
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Runtime distribution</CardTitle>
+          <CardHint>Latest snapshot per entity · cost = 30-day window</CardHint>
+        </CardHeader>
+        {runtimes.length === 0 ? (
+          <CardBody className="text-muted">No cluster snapshots yet.</CardBody>
+        ) : (
+          <Table>
+            <THead>
+              <TR>
+                <TH>Runtime</TH>
+                <TH className="text-right">Entities</TH>
+                <TH className="text-right">Cost, 30d</TH>
+                <TH className="text-right">Share</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {runtimes.map((r, i) => (
+                <TR key={r.runtimeVersion ?? `none-${i}`}>
+                  <TD className="font-mono">
+                    {r.runtimeVersion ?? <span className="text-muted">—</span>}
+                    {r.runtimeVersion && isDeprecated(r.runtimeVersion) && (
+                      <Badge variant="overrun" className="ml-2">deprecated</Badge>
+                    )}
+                  </TD>
+                  <TD className="text-right font-mono tabular-nums">{r.entities}</TD>
+                  <TD className="text-right">
+                    <Money amount={r.costMinor} basis="billed" currency={session.activeTenant.currency as "EUR" | "USD"} />
+                  </TD>
+                  <TD className="text-right font-mono tabular-nums">{r.pct.toFixed(1)}%</TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        )}
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Ingestion runs</CardTitle>
+          <CardHint>Last 15 · latest first</CardHint>
+        </CardHeader>
+        {runs.length === 0 ? (
+          <CardBody className="text-muted">No runs yet. Trigger one from the Connection page.</CardBody>
+        ) : (
+          <Table>
+            <THead>
+              <TR>
+                <TH>Started</TH>
+                <TH>Source</TH>
+                <TH>Window</TH>
+                <TH>Status</TH>
+                <TH className="text-right">Rows</TH>
+                <TH className="text-right">Duration</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {runs.map((r) => (
+                <TR key={r.id}>
+                  <TD className="font-mono text-muted">
+                    {r.startedAt
+                      ? new Date(r.startedAt).toISOString().slice(0, 16).replace("T", " ")
+                      : "—"}
+                  </TD>
+                  <TD className="font-mono">{r.source}</TD>
+                  <TD className="font-mono text-muted">{r.windowStart} → {r.windowEnd}</TD>
+                  <TD>
+                    <Badge variant={statusVariant(r.status)}>{r.status}</Badge>
+                    {r.attempts > 1 && <span className="ml-2 text-muted text-[12px]">({r.attempts} attempts)</span>}
+                  </TD>
+                  <TD className="text-right font-mono tabular-nums">{r.rowsUpserted.toLocaleString("en-IE")}</TD>
+                  <TD className="text-right font-mono tabular-nums">{formatDuration(r.durationMs)}</TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        )}
+      </Card>
+
       <Card className="border-l-2 border-l-overrun">
         <CardHeader>
           <CardTitle>End access</CardTitle>
@@ -159,4 +246,31 @@ export default async function SettingsPage() {
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)}Z`;
+}
+
+function formatDuration(ms: number | null): string {
+  if (ms === null) return "—";
+  if (ms < 1000) return `${ms} ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  const m = Math.floor(s / 60);
+  const rem = Math.round(s - m * 60);
+  return `${m}m ${rem}s`;
+}
+
+function statusVariant(status: string): "recovered" | "muted" | "overrun" | "threshold" {
+  switch (status) {
+    case "succeeded": return "recovered";
+    case "queued":    return "muted";
+    case "running":   return "muted";
+    case "partial":   return "threshold";
+    case "failed":    return "overrun";
+    default:          return "muted";
+  }
+}
+
+// DBR majors <13 are out of active support (matches dbr_upgrade rule).
+function isDeprecated(runtimeVersion: string): boolean {
+  const m = /^(\d+)/.exec(runtimeVersion);
+  return m ? Number(m[1]) < 13 : false;
 }

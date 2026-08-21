@@ -12,13 +12,17 @@ export type OverviewData = {
   budgetMinor: number;
   unattributedMinor: number;
   unattributedPct: number;
-  dailyMinor: number[];           // one entry per day of the current month, forecast tail included
+  dailyMinor: number[];              // one entry per day of the current month, forecast tail included
   billedDays: number;
+  dbusTotal: number;                 // sum of DBUs consumed to date
+  costPerDbuMinor: number | null;    // blended rate, minor units
+  previousMonthMinor: number;        // same-days-elapsed cost in the prior month
+  monthOverMonthPct: number | null;  // (current − prev) / prev × 100
+  weekOverWeekPct: number | null;    // last 7 vs prior 7
 };
 
 export async function getOverviewData(tenantId: string): Promise<OverviewData> {
   return withTenant(tenantId, async (ctx) => {
-    // Most recent ingestion; also the source of truth for freshness.
     const runRes = await ctx.query<{ finished_at: Date | null; window_end: string }>(
       `SELECT finished_at, window_end
        FROM ingest_run
@@ -30,7 +34,6 @@ export async function getOverviewData(tenantId: string): Promise<OverviewData> {
     const lastRun = runRes.rows[0];
     if (!lastRun) return fixtureOverview();
 
-    // Anchor "this month" on the most recent successful window_end.
     const anchor = new Date(`${lastRun.window_end}T00:00:00Z`);
     const monthStart = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth(), 1));
     const monthEnd = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() + 1, 0));
@@ -100,8 +103,7 @@ export async function getOverviewData(tenantId: string): Promise<OverviewData> {
     const unattrRow = unattr.rows[0]!;
     const unattributedPct = unattrRow.total > 0 ? (unattrRow.cost / unattrRow.total) * 100 : 0;
 
-    // Budget: use active workspace-scope budget if present, otherwise a
-    // sensible default so the screen still has a ruler.
+    // Budget
     const budget = await ctx.query<{ limit_minor: number }>(
       `SELECT limit_minor FROM budget
        WHERE tenant_id = $1 AND scope @> '{"type":"workspace"}'::jsonb AND period = 'monthly'
@@ -110,9 +112,52 @@ export async function getOverviewData(tenantId: string): Promise<OverviewData> {
     );
     const budgetMinor = budget.rows[0]?.limit_minor ?? Math.max(70_000_00, Math.round(billedMinor * 1.4));
 
+    // DBUs total for the month so far — usage_daily grouped, ignores rollup.
+    const dbusRes = await ctx.query<{ dbus: number }>(
+      `SELECT COALESCE(SUM(dbus), 0)::float8 AS dbus
+       FROM usage_daily
+       WHERE tenant_id = $1 AND usage_date BETWEEN $2 AND $3`,
+      [ctx.tenantId, startIso, endIso],
+    );
+    const dbusTotal = Number(dbusRes.rows[0]?.dbus ?? 0);
+    const costPerDbuMinor = dbusTotal > 0 ? Math.round(billedMinor / dbusTotal) : null;
+
+    // Previous month, same number of days elapsed — apples to apples.
+    const prevMonthStart = new Date(Date.UTC(anchor.getUTCFullYear(), anchor.getUTCMonth() - 1, 1));
+    const prevSameDaysEnd = new Date(prevMonthStart);
+    prevSameDaysEnd.setUTCDate(prevMonthStart.getUTCDate() + billedDays - 1);
+    const prevRes = await ctx.query<{ total: number }>(
+      `SELECT COALESCE(SUM(cost_minor), 0)::bigint AS total
+       FROM rollup_daily_workspace
+       WHERE tenant_id = $1 AND usage_date BETWEEN $2 AND $3`,
+      [
+        ctx.tenantId,
+        prevMonthStart.toISOString().slice(0, 10),
+        prevSameDaysEnd.toISOString().slice(0, 10),
+      ],
+    );
+    const previousMonthMinor = Number(prevRes.rows[0]?.total ?? 0);
+    const monthOverMonthPct =
+      previousMonthMinor > 0 ? ((billedMinor - previousMonthMinor) / previousMonthMinor) * 100 : null;
+
+    // Week over week — trailing 7 vs prior 7, from history + current month.
+    const lastTwoWeeks = await ctx.query<{ total: number; bucket: number }>(
+      `SELECT
+         SUM(CASE WHEN usage_date >= (CURRENT_DATE - INTERVAL '7 days') THEN cost_minor ELSE 0 END)::bigint AS bucket,
+         SUM(CASE WHEN usage_date BETWEEN (CURRENT_DATE - INTERVAL '14 days') AND (CURRENT_DATE - INTERVAL '8 days') THEN cost_minor ELSE 0 END)::bigint AS total
+       FROM rollup_daily_workspace
+       WHERE tenant_id = $1
+         AND usage_date BETWEEN (CURRENT_DATE - INTERVAL '14 days') AND CURRENT_DATE`,
+      [ctx.tenantId],
+    );
+    const wowRow = lastTwoWeeks.rows[0]!;
+    const last7 = Number(wowRow.bucket);
+    const prior7 = Number(wowRow.total);
+    const weekOverWeekPct = prior7 > 0 ? ((last7 - prior7) / prior7) * 100 : null;
+
     return {
       source: "real",
-      workspace: FIXTURE.workspace, // No workspace-name field yet; add when we have multiples.
+      workspace: FIXTURE.workspace,
       ingestedAt: (lastRun.finished_at ?? new Date()).toISOString(),
       currency,
       billedMinor,
@@ -122,6 +167,11 @@ export async function getOverviewData(tenantId: string): Promise<OverviewData> {
       unattributedPct,
       dailyMinor,
       billedDays,
+      dbusTotal,
+      costPerDbuMinor,
+      previousMonthMinor,
+      monthOverMonthPct,
+      weekOverWeekPct,
     };
   });
 }
@@ -139,6 +189,11 @@ function fixtureOverview(): OverviewData {
     unattributedPct: FIXTURE.unattributedPct,
     dailyMinor: [...FIXTURE.dailyMinor],
     billedDays: FIXTURE.billedDays,
+    dbusTotal: 0,
+    costPerDbuMinor: null,
+    previousMonthMinor: 0,
+    monthOverMonthPct: null,
+    weekOverWeekPct: null,
   };
 }
 
